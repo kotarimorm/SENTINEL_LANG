@@ -1,0 +1,11 @@
+# SENTINEL_LANG — License Notice
+
+Copyright (c) GRAY_WHALE_CO
+
+This repository contains public documentation, specifications, examples and research materials related to Sentinel Lang.
+
+The core compiler backend, internal tooling and proprietary implementation details are not included in this repository.
+
+No permission is granted to redistribute, repackage or commercially reuse the Sentinel Lang compiler implementation without explicit permission from the author.
+
+This project is currently experimental and provided for research and showcase purposes only.
