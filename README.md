@@ -2,7 +2,9 @@
 
 Experimental low-level programming language for OSDev, bootloaders, kernels, and direct hardware-oriented code generation.
 
-Sentinel Lang is an experimental systems programming language that compiles `.sl` source code into NASM assembly and then into a flat binary. It is designed as a practical middle ground between readable high-level syntax and low-level assembly control.
+Sentinel Lang is an experimental systems programming language that compiles `.sl` source code into NASM assembly and then into a flat binary.
+
+It is designed as a practical middle ground between readable high-level syntax and low-level assembly control.
 
 ---
 
@@ -22,7 +24,11 @@ Sentinel Lang is an experimental systems programming language that compiles `.sl
 
 ## What Sentinel Is
 
-Sentinel is a low-level experimental language focused on operating system development. It is not a general-purpose scripting language and it is not trying to hide the hardware. Instead, it provides a simpler syntax over low-level concepts while still producing explicit NASM output.
+Sentinel is a low-level experimental language focused on operating system development.
+
+It is not a general-purpose scripting language and it is not trying to hide the hardware.
+
+Instead, it provides a simpler syntax over low-level concepts while still producing explicit NASM output.
 
 ```text
 Readable source code
@@ -37,7 +43,9 @@ NASM assembly
 Flat binary
 ```
 
-### What Sentinel Is Not
+---
+
+## What Sentinel Is Not
 
 Sentinel is currently not:
 
@@ -76,7 +84,8 @@ NASM Assembly
  Flat Binary
 ```
 
-**Short version:**
+Short version:
+
 ```text
 .sl  ->  Lexer  ->  Parser  ->  AST  ->  NASM  ->  .bin
 ```
@@ -91,7 +100,8 @@ NASM Assembly
 | **x32** | 32-bit protected mode | experimental kernels |
 | **x64** | 64-bit long mode | modern kernel experiments |
 
-**Current strongest path:**
+Current strongest path:
+
 ```text
 x64 + type(console)
 ```
@@ -104,8 +114,9 @@ x64 + type(console)
 | :--- | :--- | :--- |
 | **Lexer** | Working | Tokenizes Sentinel source |
 | **Parser** | Working | Builds AST |
+| **AST** | Working | Internal program representation |
 | **NASM codegen** | Working | Generates x64 NASM output |
-| **Flat binary pipeline** | Working | Uses NASM -f bin |
+| **Flat binary pipeline** | Working | Uses NASM `-f bin` |
 | **x64 mode** | Working | Main tested mode |
 | **type(console)** | Working | VGA text output |
 | **local** | Working | Global storage currently |
@@ -116,16 +127,15 @@ x64 + type(console)
 | **create functions** | Working | Step-based functions |
 | **start function calls** | Working | Normal calls |
 | **Function arguments** | Working | x64 register-based |
-| **get ... result()** | Experimental | Uses current rax result |
+| **get ... result()** | Experimental | Uses current `rax` result |
 | **Arrays** | Working | Numeric arrays |
 | **Array indexing** | Working | Fixed in v0.2-alpha |
-| **low-code** | Working | emit bytes only |
+| **low-code** | Working | `emit` bytes only |
 | **try/catch** | Syntax-only | No real exception runtime yet |
 | **FREERAM** | Experimental | Currently clears variable storage |
 
 ---
 
-```md
 ## Example
 
 ```sl
@@ -146,8 +156,9 @@ if math_result > 10 then
 end
 ```
 
-```md
-### Generated NASM Style
+---
+
+## Generated NASM Style
 
 Sentinel generates NASM-style output:
 
@@ -186,7 +197,7 @@ This is useful for OSDev-style debugging where each stage of initialization matt
 
 ## Low-Code Blocks
 
-Sentinel supports low-level byte emission through low-code.
+Sentinel supports low-level byte emission through `low-code`.
 
 ```sl
 low-code:
@@ -195,14 +206,16 @@ low-code:
     emit 0x90
 ```
 
-**Generated NASM:**
+Generated NASM:
+
 ```asm
 db 0x90
 db 0x90
 db 0x90
 ```
 
-**Current rule:**
+Current rule:
+
 > `low-code` supports emit-based byte output. Full raw inline assembly is not stable yet.
 
 ---
@@ -211,7 +224,6 @@ db 0x90
 
 Sentinel v0.2-alpha has survived multiple large compiler stress tests.
 
-```md
 | Test | Purpose | Result |
 | :--- | :--- | :--- |
 | **Hello x64** | Basic output | Passed |
@@ -233,39 +245,48 @@ Sentinel v0.2-alpha has survived multiple large compiler stress tests.
 | :--- | :--- |
 | **Scopes** | Function locals can still collide with globals |
 | **Locals** | Function locals are emitted as global labels |
-| **Return values** | No explicit return keyword yet; `get result()` depends on generated rax value |
+| **Return values** | No explicit `return` keyword yet |
+| **Result access** | `get result()` depends on generated `rax` value |
 | **Strings** | No real string comparison yet |
 | **Arrays** | No bounds checking yet |
 | **Exceptions** | `try/catch` is syntax-only |
 | **Type system** | Type checking is incomplete |
-| **Inline ASM** | Only emit is stable |
+| **Inline ASM** | Only `emit` is stable |
 | **Safety** | Memory safety is not implemented yet |
 
-### Important v0.2-alpha Bug Found
+---
+
+## Important v0.2-alpha Bug Found
 
 The compiler currently has incomplete scope handling.
 
-**Example:**
+Example:
+
 ```sl
 local a = 10
+
 create test(a)
     (1) local a = a + 1
 ```
 
 This can generate duplicate NASM labels:
+
 ```asm
 sl_var_a dq 10
 sl_var_a dq 0
 ```
 
-**NASM error:**
+NASM error:
+
 ```text
 label `sl_var_a` inconsistently redefined
 ```
 
 This is planned to be fixed in `v0.3-alpha` with proper scope-aware label generation.
 
-### Planned Scope Model
+---
+
+## Planned Scope Model
 
 | Source Concept | Planned Internal Label |
 | :--- | :--- |
@@ -315,7 +336,9 @@ v1.0
 stable OSDev language core
 ```
 
-### Roadmap Snapshot
+---
+
+## Roadmap Snapshot
 
 | Version | Goal |
 | :--- | :--- |
@@ -333,11 +356,11 @@ stable OSDev language core
 ## Repository Structure
 
 ```text
-examples/       Sentinel source examples
-generated/      Generated NASM output
-screenshots/    IDE and compiler screenshots
-README.md       Project overview
-ROADMAP.md      Development roadmap
+examples/        Sentinel source examples
+generated/       Generated NASM output
+screenshots/     IDE and compiler screenshots
+README.md        Project overview
+ROADMAP.md       Development roadmap
 SPECIFICATION.md Language specification
 ```
 
@@ -348,18 +371,19 @@ SPECIFICATION.md Language specification
 | Use Case | Status |
 | :--- | :--- |
 | **x64 kernel experiments** | Good target |
-| **bootloader research** | Planned / experimental |
+| **Bootloader research** | Planned / experimental |
 | **VGA text output** | Working |
 | **OSDev learning** | Good target |
-| **driver experiments** | Future |
-| **desktop applications** | Future |
-| **self-hosting** | Long-term goal |
+| **Driver experiments** | Future |
+| **Desktop applications** | Future |
+| **Self-hosting** | Long-term goal |
 
 ---
 
 ## Design Philosophy
 
 Sentinel follows a simple rule:
+
 > **Be readable, but stay close to the machine.**
 
 The language should make low-level programming easier to write, but not hide what the generated code does.
