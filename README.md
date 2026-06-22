@@ -12,7 +12,7 @@ It is designed as a practical middle ground between readable high-level syntax a
 
 | Field | Value |
 | :--- | :--- |
-| **Version** | `v0.2-alpha` |
+| **Version** | `v0.3-alpha` |
 | **Main target** | `x64` |
 | **Output** | NASM assembly / flat binary |
 | **Compiler backend** | Private |
@@ -22,19 +22,49 @@ It is designed as a practical middle ground between readable high-level syntax a
 
 ---
 
-## What Sentinel Is
+## v0.3-alpha Core Hardening
 
-Sentinel is a low-level experimental language focused on operating system development.
+Sentinel `v0.3-alpha` focuses on compiler core stability.
 
-It is not a general-purpose scripting language and it is not trying to hide the hardware.
+This release hardens the language core before larger OSDev libraries are added.
 
-Instead, it provides a simpler syntax over low-level concepts while still producing explicit NASM output.
+Key improvements:
+
+| Area | Status |
+| :--- | :--- |
+| **Semantic diagnostics** | Working |
+| **Flat storage validation** | Working |
+| **Function step validation** | Working |
+| **Argument count validation** | Working |
+| **Unsafe step-call protection** | Working |
+| **x64 register preservation fixes** | Working |
+| **Large core hardening tests** | Passed |
+
+`v0.3-alpha` does not introduce large standard libraries yet.
+
+The goal is simple:
 
 ```text
-Readable source code
+Reject broken Sentinel before NASM.
+Keep valid low-level programs compiling.
+Make the core harder to break.
+```
+
+---
+## What Sentinel Is
+
+Sentinel is an OSDev-first low-level language focused on bootloaders, kernels, flat binaries, and direct NASM-oriented output.
+
+It is designed to make low-level code easier to write without hiding the machine.
+
+```text
+Readable Sentinel source
         │
         ▼
 Compiler pipeline
+        │
+        ▼
+Semantic checks
         │
         ▼
 NASM assembly
@@ -75,6 +105,9 @@ Sentinel is currently not:
    AST
     │
     ▼
+Semantic Analyzer
+    │
+    ▼
 Code Generator
     │
     ▼
@@ -87,9 +120,8 @@ NASM Assembly
 Short version:
 
 ```text
-.sl  ->  Lexer  ->  Parser  ->  AST  ->  NASM  ->  .bin
+.sl -> Lexer -> Parser -> AST -> Semantic Analyzer -> NASM -> .bin
 ```
-
 ---
 
 ## Architecture Modes
@@ -108,29 +140,34 @@ x64 + type(console)
 
 ---
 
-## v0.2-alpha Feature Matrix
+## v0.3-alpha Feature Matrix
 
 | Feature | Status | Notes |
 | :--- | :--- | :--- |
 | **Lexer** | Working | Tokenizes Sentinel source |
 | **Parser** | Working | Builds AST |
 | **AST** | Working | Internal program representation |
+| **Semantic analyzer** | Working | Catches invalid Sentinel before NASM |
 | **NASM codegen** | Working | Generates x64 NASM output |
 | **Flat binary pipeline** | Working | Uses NASM `-f bin` |
 | **x64 mode** | Working | Main tested mode |
+| **x16 boot sector output** | Working | Can generate boot-sector style binaries |
 | **type(console)** | Working | VGA text output |
-| **local** | Working | Global storage currently |
-| **redo** | Working | Numeric mutation |
+| **local** | Working | Declares flat storage |
+| **redo** | Working | Mutates existing storage |
 | **if / then / end** | Working | Numeric conditions |
 | **while** | Working | Numeric loops |
 | **repeat** | Working | Literal and variable count |
 | **create functions** | Working | Step-based functions |
-| **start function calls** | Working | Normal calls |
+| **start function calls** | Working | Normal calls and safe step calls |
 | **Function arguments** | Working | x64 register-based |
+| **Argument validation** | Working | Checks function argument counts |
+| **Function step validation** | Working | Detects missing or unsafe step calls |
+| **Register preservation** | Improved | Protects `rsi` around generated print calls |
 | **get ... result()** | Experimental | Uses current `rax` result |
 | **Arrays** | Working | Numeric arrays |
-| **Array indexing** | Working | Fixed in v0.2-alpha |
-| **low-code** | Working | `emit` bytes only |
+| **Array indexing** | Working | Literal and variable indexing |
+| **low-code** | Working | `emit` and selected low-level commands |
 | **try/catch** | Syntax-only | No real exception runtime yet |
 | **FREERAM** | Experimental | Currently clears variable storage |
 
@@ -144,14 +181,15 @@ type(console)
 
 local x = 10
 local y = 5
+local sum = 0
 
 create add(a, b)
-    (1) local sum = a + b
+    (1) redo: sum to a + b
     (2) console_print("add done")
 
-local math_result = get add(x, y) result()
+start add(x, y)
 
-if math_result > 10 then
+if sum > 10 then
     console_print("result ok")
 end
 ```
@@ -216,13 +254,13 @@ db 0x90
 
 Current rule:
 
-> `low-code` supports emit-based byte output. Full raw inline assembly is not stable yet.
+> `low-code` supports `emit` and selected low-level commands. Full arbitrary inline assembly is backend-dependent and not stable yet.
 
 ---
 
 ## Stress Tests
 
-Sentinel v0.2-alpha has survived multiple large compiler stress tests.
+Sentinel `v0.3-alpha` has survived multiple compiler stress tests and semantic hardening checks.
 
 | Test | Purpose | Result |
 | :--- | :--- | :--- |
@@ -235,7 +273,9 @@ Sentinel v0.2-alpha has survived multiple large compiler stress tests.
 | **Beast Test** | medium stress program | Passed |
 | **Ultra Beast Test** | large stress program | Passed |
 | **Turtle Abomination** | heavy control-flow stress | Passed |
-| **Semantic Killer** | scope collision edge case | Found bug |
+| **Semantic Killer** | invalid semantic cases | Passed |
+| **Register Clobber Test** | verifies print does not destroy function arguments | Passed |
+| **Core Hardening Beast v0.3.1** | large flat-storage and ABI hardening stress test | Passed |
 
 ---
 
@@ -243,22 +283,25 @@ Sentinel v0.2-alpha has survived multiple large compiler stress tests.
 
 | Area | Current Limitation |
 | :--- | :--- |
-| **Scopes** | Function locals can still collide with globals |
-| **Locals** | Function locals are emitted as global labels |
+| **Standard libraries** | Large libraries are not included yet |
 | **Return values** | No explicit `return` keyword yet |
-| **Result access** | `get result()` depends on generated `rax` value |
+| **Result access** | `get result()` still depends on generated `rax` value |
 | **Strings** | No real string comparison yet |
 | **Arrays** | No bounds checking yet |
 | **Exceptions** | `try/catch` is syntax-only |
 | **Type system** | Type checking is incomplete |
-| **Inline ASM** | Only `emit` is stable |
-| **Safety** | Memory safety is not implemented yet |
+| **Inline ASM** | Full arbitrary inline ASM is not stable yet |
+| **Memory safety** | Memory safety is not implemented yet |
+| **Networking** | No network stack yet |
+| **Filesystem** | No filesystem layer yet |
 
 ---
 
-## Important v0.2-alpha Bug Found
+## Important v0.3-alpha Fix
 
-The compiler currently has incomplete scope handling.
+Sentinel `v0.3-alpha` adds semantic diagnostics before NASM code generation.
+
+The compiler now rejects known invalid semantic patterns earlier, with readable Sentinel-level errors.
 
 Example:
 
@@ -266,35 +309,66 @@ Example:
 local a = 10
 
 create test(a)
-    (1) local a = a + 1
+    (1) console_print("bad")
 ```
 
-This can generate duplicate NASM labels:
-
-```asm
-sl_var_a dq 10
-sl_var_a dq 0
-```
-
-NASM error:
+This now fails before NASM:
 
 ```text
-label `sl_var_a` inconsistently redefined
+[SEMANTIC S005] Parameter `a` conflicts with storage declared on line 1.
 ```
 
-This is planned to be fixed in `v0.3-alpha` with proper scope-aware label generation.
+Another example:
+
+```sl
+create boot()
+    (1) console_print("boot")
+
+start boot(9)
+```
+
+This now fails before NASM:
+
+```text
+[SEMANTIC S012] Function `boot` has no step `(9)`.
+```
+
+The goal of `v0.3-alpha` is not a classical scope system.
+
+Sentinel uses flat storage discipline:
+
+```text
+local = flat storage declaration
+redo  = mutation of existing storage
+```
+
+Broken Sentinel should fail as Sentinel, not as NASM.
 
 ---
+## Flat Storage Model
 
-## Planned Scope Model
+Sentinel does not use classical lexical scopes in `v0.3-alpha`.
 
-| Source Concept | Planned Internal Label |
+Storage is flat and explicit.
+
+| Source Concept | Meaning |
 | :--- | :--- |
-| **Global variable** | `sl_var_counter` |
-| **Function local** | `sl_func_math_var_sum` |
-| **Function parameter** | register / stack slot |
-| **Temporary value** | `sl_tmp_0` |
+| **Top-level `local`** | Declares flat storage |
+| **`redo`** | Mutates existing storage |
+| **Function parameter** | Temporary input name passed through registers |
+| **Function step** | Numbered compiler-visible function stage |
+| **Function storage** | Use top-level storage and mutate with `redo` |
 
+Recommended style:
+
+```sl
+local result = 0
+
+create add(a, b)
+    (1) redo: result to a + b
+
+start add(x, y)
+```
 ---
 
 ## Project Direction
@@ -315,7 +389,7 @@ working x64 language core
 v0.3-alpha
     │
     ▼
-scopes + semantic errors
+core hardening + semantic diagnostics
     │
     ▼
 v0.4-alpha
@@ -343,25 +417,25 @@ stable OSDev language core
 | Version | Goal |
 | :--- | :--- |
 | **v0.2-alpha** | Working x64 compiler core |
-| **v0.3-alpha** | Scope system and semantic diagnostics |
-| **v0.4-alpha** | Better OSDev helpers |
+| **v0.3-alpha** | Core hardening and semantic diagnostics |
+| **v0.4-alpha** | First `lib(std)` OSDev command pack |
 | **v0.5-alpha** | Demo kernel / mini OS |
-| **v0.6-alpha** | Low-level standard libraries |
-| **v0.7-beta** | Testing and documentation hardening |
-| **v0.8-beta** | Host tooling research |
+| **v0.6-alpha** | Runtime and low-level library expansion |
+| **v0.7-alpha** | Driver and hardware helper experiments |
+| **v0.8-alpha** | Host tooling research |
+| **v0.9-beta** | Testing and documentation hardening |
 | **v1.0** | Stable experimental OSDev language |
-
 ---
 
 ## Repository Structure
 
 ```text
-examples/        Sentinel source examples
-generated/       Generated NASM output
-screenshots/     IDE and compiler screenshots
-README.md        Project overview
-ROADMAP.md       Development roadmap
-SPECIFICATION.md Language specification
+README.md         Project overview
+SPECIFICATION.md  Full language specification
+ROADMAP.md        Development roadmap
+TEST_REPORT.md    Compiler and language test status
+status.md         Current development status
+LICENSE           Project license
 ```
 
 ---
@@ -388,10 +462,14 @@ Sentinel follows a simple rule:
 
 The language should make low-level programming easier to write, but not hide what the generated code does.
 
+Sentinel is not designed to replace C or C++ directly.
+
+It is designed as an OSDev-first systems language for people who want readable low-level code while still understanding the generated output.
+
 ---
 
 ## Final Goal
 
-The long-term goal is to build a practical low-level language that can be used to experiment with kernels, bootloaders, drivers, and eventually larger OSDev systems.
+The long-term goal is to build a practical low-level language for bootloaders, kernels, drivers, and larger OSDev systems.
 
-Sentinel is still early, but the `v0.2-alpha` compiler already has a working core pipeline and can generate real NASM output from non-trivial programs.
+Sentinel is still early, but the `v0.3-alpha` compiler now has a hardened experimental core with semantic diagnostics, flat storage validation, safer function step rules, x64 register preservation fixes, and successful large stress-test compilation.
