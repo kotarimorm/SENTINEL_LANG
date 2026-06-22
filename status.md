@@ -2,18 +2,15 @@
 
 > Current development status for Sentinel Lang.
 
-Sentinel Lang is currently in active experimental development.
-
-This document tracks what works, what is experimental, what is broken, and what the next engineering targets are.
-
 ---
 
 ## Current Version
 
 | Field | Value |
 | :--- | :--- |
-| **Version** | `v0.2-alpha` |
+| **Version** | `v0.3-alpha` |
 | **Main target** | `x64` |
+| **Secondary target** | `x16` boot-sector experiments |
 | **Main mode** | `type(console)` |
 | **Output** | NASM assembly / flat binary |
 | **Compiler backend** | Private |
@@ -25,195 +22,201 @@ This document tracks what works, what is experimental, what is broken, and what 
 ## Status Summary
 
 ```text
-README          Updated
-Specification   Updated
-Compiler core   Working
-x64 pipeline    Working
-Stress tests    Passing
-Scopes          Incomplete
-OSDev libs      Planned
-Desktop libs    Future
+Lexer           Working
+Parser          Working
+AST             Working
+Semantic checks Working
+x64 codegen     Working
+x16 boot output Working / experimental
+Flat binary     Working
+Optimizer       Working
+Libraries       Planned for v0.4-alpha
 ```
 
+Sentinel `v0.3-alpha` focuses on compiler core hardening.
+
+The compiler now catches several invalid semantic patterns before NASM.
+
 ---
 
-## Stability Rating
+## Core Status
 
-| Area | Rating | Notes |
+| Area | Status | Notes |
 | :--- | :--- | :--- |
-| **Lexer** | High | Handles current syntax well |
-| **Parser** | Medium-High | Handles large tests, but syntax is still evolving |
-| **AST** | Medium-High | Stable enough for current codegen |
-| **x64 Codegen** | Medium | Works, but semantics need cleanup |
-| **NASM Output** | Medium-High | Generates valid NASM for tested cases |
-| **Runtime Semantics** | Medium-Low | Some behavior depends on generated registers |
-| **Scopes** | Low | Known collision issues |
-| **Diagnostics** | Low-Medium | Some errors still surface from NASM |
-| **Standard Library** | Low | Mostly not implemented yet |
-| **Documentation** | Medium-High | Improving rapidly |
+| Lexer | Working | Tokenizes Sentinel source |
+| Parser | Working | Builds AST |
+| AST | Working | Internal representation |
+| Semantic analyzer | Working | Rejects invalid Sentinel before NASM |
+| x64 codegen | Working | Main tested backend |
+| x16 codegen | Experimental | Boot-sector style output works |
+| Optimizer | Working | Simple ASM-level optimization pass |
+| NASM pipeline | Working | Produces flat binaries |
+| Diagnostics | Improved | Semantic errors now include fixes |
+| Register safety | Improved | Generated print preserves `rsi` |
+| Libraries | Planned | `lib(std)` begins in `v0.4-alpha` |
 
 ---
 
-## Working Features
+## Working Language Features
 
 | Feature | Status | Notes |
 | :--- | :--- | :--- |
-| `x64` mode | Working | Main tested target |
+| `x16` | Experimental | BIOS / bootloader path |
+| `x32` | Experimental | Protected-mode experiments |
+| `x64` | Working | Main tested mode |
 | `type(console)` | Working | VGA-style console output |
-| `local` variables | Working | Currently emitted as global labels |
-| Numeric expressions | Working | Basic arithmetic works |
-| `redo` | Working | Variable mutation works |
-| `if / then / end` | Working | Numeric conditions work |
-| Nested `if` | Working | Tested in stress programs |
-| `while` | Working | Numeric loops work |
-| `repeat(N)` | Working | Literal repeat count works |
-| `repeat(variable)` | Working | Variable repeat count works |
-| `create` functions | Working | Requires numbered steps |
-| Numbered function steps | Working | Core Sentinel function model |
-| `start function()` | Working | Normal function call |
+| `local` | Working | Flat storage declaration |
+| `redo` | Working | Mutation of existing storage |
+| `if / then / end` | Working | Numeric conditions |
+| `while` | Working | Numeric loops |
+| `repeat` | Working | Literal and variable counts |
+| `create` functions | Working | Numbered function steps |
+| `start` calls | Working | Normal calls and safe step calls |
 | Function arguments | Working | x64 register-based |
-| `get function() result()` | Experimental but working | Depends on `rax` |
-| Arrays | Working | Numeric arrays work |
-| Array indexing | Working | Fixed during `v0.2-alpha` |
-| `console_print` | Working | String output works |
-| `low-code` with `emit` | Working | Emits raw bytes |
+| `get ... result()` | Experimental | Depends on `rax` |
+| Arrays | Working | Numeric arrays |
+| Array indexing | Working | Literal and variable indexing |
+| `low-code` | Working | `emit` and selected low-level commands |
+| `try/catch` | Syntax-only | No runtime exception model |
 | `FREERAM` | Experimental | Clears variable storage |
-| `try/catch` syntax | Syntax-only | No real exception runtime yet |
 
 ---
 
-## Experimental Features
+## v0.3-alpha Semantic Diagnostics
 
-| Feature | Status | Risk |
+| Code | Meaning | Status |
 | :--- | :--- | :--- |
-| `get result()` | Experimental | No explicit `return` model yet |
-| Function-local variables | Experimental | Can collide with globals |
-| `FREERAM` | Experimental | Not a real allocator |
-| `try/catch` | Syntax-only | No throw/unwind/runtime handling |
-| Division `/` | Experimental | Needs more tests |
-| Modulo `%` | Experimental | Used in tests, needs hardening |
-| `x16` mode | Experimental | Not current main path |
-| `x32` mode | Experimental | Not current main path |
-| Low-level byte emission | Experimental | Powerful but unsafe |
+| `S001` | Reserved keyword used as name | Working |
+| `S002` | Duplicate function | Working |
+| `S003` | Duplicate storage | Working |
+| `S004` | Duplicate parameter | Working |
+| `S005` | Parameter/storage collision | Working |
+| `S007` | Cannot `redo` parameter | Working |
+| `S008` | Unknown storage mutation | Working |
+| `S009` | Unknown function | Working |
+| `S010` | Recursive call unsupported | Working |
+| `S011` | `local` inside function blocked | Working |
+| `S012` | Missing function step | Working |
+| `S013` | Invalid `redo` target | Working |
+| `S014` | Storage/function collision | Working |
+| `S015` | Unknown storage symbol | Working |
+| `S016` | Mixed step selector and args | Working |
+| `S017` | Wrong function argument count | Working |
+| `S018` | Duplicate function step | Working |
+| `S019` | `FREERAM` unknown storage | Working |
+| `S020` | Unsafe step-call on parameterized function | Working |
 
 ---
 
-## Known Bugs
+## Important v0.3-alpha Fixes
 
-| Bug | Impact | Planned Fix |
-| :--- | :--- | :--- |
-| Function locals can collide with globals | NASM label redefinition | `v0.3-alpha` scope system |
-| Function locals can collide with parameters | Wrong code or NASM error | Function-local label mangling |
-| `result` cannot be used as normal variable name | Parser conflict | Better diagnostics |
-| `get result()` depends on `rax` | Weak return semantics | Explicit return/result model |
-| Arrays have no bounds checks | Unsafe memory reads | Runtime or compiler checks later |
-| Strings cannot be compared safely | Pointer-like behavior | String library later |
-| `try/catch` does not catch real errors | Misleading semantics | Real exception model later |
-| Some invalid code fails at NASM stage | Poor UX | Semantic checker before codegen |
+### Semantic Errors Before NASM
+
+Invalid Sentinel should fail as Sentinel, not as NASM.
+
+Examples now caught before codegen/NASM:
+
+```text
+unknown functions
+unknown storage
+duplicate storage
+missing function steps
+wrong function argument counts
+unsafe parameterized step calls
+```
 
 ---
 
-## Most Important Current Bug
+### Flat Storage Discipline
 
-### Scope Collision
+Sentinel does not use classical lexical scopes in `v0.3-alpha`.
 
-Current problematic example:
+Current model:
+
+```text
+local = flat storage declaration
+redo  = mutation of existing storage
+params = temporary input names
+```
+
+Function-local `local` declarations are blocked for now because storage allocation inside function steps can create unsafe duplicate NASM labels.
+
+Recommended style:
 
 ```sl
-local a = 10
+local result = 0
 
-create test(a)
-    (1) local a = a + 1
+create add(a, b)
+    (1) redo: result to a + b
+
+start add(x, y)
 ```
 
-Possible generated NASM conflict:
+---
+
+### Register Preservation
+
+Generated print calls now preserve `rsi`.
+
+This prevents `console_print` from destroying the second x64 function argument.
+
+Expected generated shape:
 
 ```asm
-sl_var_a dq 10
-sl_var_a dq 0
+push rsi
+lea  rsi, [rel sl_pstr_0]
+call sl_print_str
+pop  rsi
 ```
 
-NASM error:
+---
 
-```text
-label `sl_var_a` inconsistently redefined
+### Safe Step Calls
+
+Step calls are allowed for no-parameter functions:
+
+```sl
+create boot_report()
+    (1) console_print("one")
+    (2) console_print("two")
+
+start boot_report(2)
 ```
 
-### Planned Fix
+Step calls are blocked for parameterized functions:
 
-| Source Concept | Planned Internal Label |
+```sl
+create add(a, b)
+    (1) console_print("add")
+    (2) redo: result to a + b
+
+start add(2)
+```
+
+This fails with `S020`.
+
+---
+
+## Known Limitations
+
+| Area | Current Limitation |
 | :--- | :--- |
-| Global variable | `sl_var_a` |
-| Function parameter | register / stack slot |
-| Function local | `sl_func_test_var_a` |
-| Temporary value | `sl_tmp_0` |
-
-This is the main target for `v0.3-alpha`.
-
----
-
-## Stress Test Results
-
-| Test | Purpose | Result |
-| :--- | :--- | :--- |
-| Hello x64 | Basic compile/output | Passed |
-| Repeat Test | `repeat()` loop handling | Passed |
-| While Test | `while` loop handling | Passed |
-| Nested If Test | Nested control flow | Passed |
-| Function Test | `create` / `start` | Passed |
-| Result Test | `get result()` behavior | Passed |
-| Array Test | Array declaration | Passed |
-| Array Index Test | Array indexing codegen | Passed |
-| Beast Test | Medium-size full language test | Passed |
-| Ultra Beast Test | Large full language test | Passed |
-| Turtle Test | Small correctness flow | Passed |
-| Turtle Abomination | Heavy stress program | Passed |
-| Semantic Killer | Scope edge case | Found bug |
+| Standard libraries | Planned for `v0.4-alpha` |
+| `get result()` | Still depends on `rax` |
+| Type system | Incomplete |
+| String comparison | Not stable |
+| Array bounds | Not checked |
+| Exceptions | `try/catch` is syntax-only |
+| Memory safety | Not implemented |
+| Networking | Not implemented |
+| Filesystem | Not implemented |
+| Full inline ASM | Backend-dependent / not fully stable |
 
 ---
 
-## v0.2-alpha Achievement
+## Recommended v0.3-alpha Style
 
-Sentinel `v0.2-alpha` can now compile non-trivial programs containing:
-
-```text
-variables
-numeric expressions
-loops
-nested branches
-functions
-function arguments
-function result access
-arrays
-array indexing
-low-code byte emission
-console output
-large stress tests
-```
-
-This means the compiler has moved beyond a simple hello-world stage.
-
-It now has a working experimental language core.
-
----
-
-## Current Reliability
-
-| Category | State |
-| :--- | :--- |
-| Small programs | Usually compile |
-| Medium programs | Compile if syntax follows spec |
-| Large stress programs | Successfully tested |
-| Invalid syntax | May produce parser or NASM errors |
-| Invalid semantics | Not always detected early |
-| Runtime safety | Not guaranteed |
-| OSDev safety | Experimental |
-
----
-
-## Current Recommended Coding Style
-
-Use this style for `v0.2-alpha`:
+Use ordered flat-storage style:
 
 ```sl
 x64
@@ -223,102 +226,57 @@ local counter = 0
 local limit = 3
 
 create tick()
-    (1) console_print("tick")
+    (1) redo: counter to counter + 1
+    (2) console_print("tick")
 
 repeat(limit)
-    redo: counter to counter + 1
+    start tick()
 end
 
 if counter == 3 then
-    start tick()
+    console_print("ok")
 end
 ```
 
-Recommended rules:
+Rules:
 
 | Rule | Reason |
 | :--- | :--- |
-| Use `x64` | Most tested mode |
-| Use `type(console)` | Most stable output mode |
-| Use numeric conditions | String comparisons are not stable |
-| Use unique variable names | Avoid scope collision |
-| Avoid `result` as a variable name | Reserved keyword |
-| Use numbered function steps | Required function syntax |
-| Use `emit` only in `low-code` | Raw ASM is not stable |
-| Avoid out-of-bounds array indexing | No bounds checks yet |
+| Declare storage with top-level `local` | Keeps flat storage explicit |
+| Mutate with `redo` | Avoids duplicate declarations |
+| Use named args for data | Keeps `start func(N)` as step selector |
+| Use step calls only on no-param functions | Avoids stale argument registers |
+| Keep functions ordered by boot stage | Improves OSDev readability |
 
 ---
 
-## Do Not Use Yet
+## v0.4-alpha Direction
 
-Avoid these in `v0.2-alpha`:
+`v0.4-alpha` should begin the first OSDev command library work.
+
+Initial direction:
 
 ```text
-type(driver)
-raw inline assembly text
-return
-throw
-classes
-full imports
-string comparison
-pointer syntax
-interrupt handlers
-driver declaration syntax
-heap allocation APIs
-desktop APIs
-self-hosting code
+lib(std)
 ```
 
----
-
-## Next Engineering Target
-
-The next major compiler milestone is:
+Possible commands:
 
 ```text
-v0.3-alpha = scopes + semantic diagnostics
-```
-
-Main goals:
-
-| Goal | Description |
-| :--- | :--- |
-| Scope system | Separate globals, parameters, locals, temporaries |
-| Label mangling | Prevent NASM label collisions |
-| Semantic checker | Detect invalid Sentinel before NASM |
-| Better errors | Show Sentinel-level error messages |
-| Reserved word diagnostics | Clear errors for names like `result` |
-| Function result cleanup | Make `get result()` more predictable |
-
----
-
-## Future Library Plan
-
-Standard libraries are not the current focus of `v0.2-alpha`.
-
-Planned direction:
-
-| Version | Library Goal |
-| :--- | :--- |
-| `v0.4-alpha` | First OSDev micro-libs |
-| `v0.4-stable` | Stable OSDev standard library |
-| `v0.5-alpha` | Demo kernel / mini OS support |
-| `v0.6-alpha` | Host target research |
-| `v0.7-alpha` | Desktop primitives |
-| `v0.8-alpha` | Desktop GUI libraries |
-
-Possible future OSDev builtins:
-
-```text
-read_port(port)
-write_port(port, value)
-timer_wait(ticks)
 halt()
 nop()
 panic(msg)
+read_port(port)
+write_port(port, value)
+io_wait()
 pic_eoi()
-keyboard_read()
+vga_clear()
+vga_print(msg)
 ```
+
+`v0.4-alpha` should not try to become a full standard library.
+
+It should provide small compile-time OSDev commands that lower directly into low-level code.
 
 ---
 
@@ -326,30 +284,28 @@ keyboard_read()
 
 | Item | Status |
 | :--- | :--- |
-| README | Updated for `v0.2-alpha` |
-| Specification | Updated / strict |
-| Roadmap | Needs refresh |
-| Test report | Planned |
+| README | Updating for `v0.3-alpha` |
+| Specification | Needs v0.3 semantic/ABI update |
+| Roadmap | Needs v0.3/v0.4 refresh |
+| Test report | Updated for `v0.3-alpha` |
 | Compiler source | Private |
-| Examples | Needs more `v0.2-alpha` examples |
-| Generated ASM | Needs updated stress output |
+| Examples | Needs ordered v0.3 examples |
+| Generated ASM | Private / local testing |
 
 ---
 
 ## Final Status
 
-Sentinel Lang is currently a real experimental compiler project with a working `x64` language core.
+Sentinel Lang `v0.3-alpha` is a real experimental compiler stage.
 
-It is not stable yet.
+It can compile large ordered flat-storage programs into NASM assembly and flat binary output.
 
-It is not production-ready.
-
-But it can already compile large non-trivial Sentinel programs into NASM assembly and flat binary output.
+It now includes semantic diagnostics before NASM and has passed core hardening tests.
 
 Current priority:
 
 ```text
-Correctness before features.
-Scopes before libraries.
-Diagnostics before magic.
+Finish v0.3-alpha docs.
+Keep the core stable.
+Begin v0.4-alpha lib(std) planning.
 ```
