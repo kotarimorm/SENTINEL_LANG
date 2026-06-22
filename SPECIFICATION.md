@@ -1,29 +1,31 @@
 # Sentinel Lang Specification
 
-> Specification for Sentinel Lang `v0.2-alpha`.
+> Specification for Sentinel Lang `v0.3-alpha`.
 
-Sentinel Lang is an experimental low-level systems programming language designed for OSDev, bootloader experiments, kernel experiments, and direct NASM-oriented code generation.
+Sentinel Lang is an experimental OSDev-first low-level language designed for bootloaders, kernels, flat binaries, and direct NASM-oriented code generation.
 
-This document describes what Sentinel Lang currently supports, what is experimental, and what is explicitly not supported.
+This document describes the current language model, supported syntax, semantic rules, known limitations, and planned direction.
 
 ---
 
-## Version
+# Version
 
 | Field | Value |
 | :--- | :--- |
-| **Language version** | `v0.2-alpha` |
+| **Language version** | `v0.3-alpha` |
 | **Main tested target** | `x64` |
+| **Secondary target** | `x16` boot-sector experiments |
 | **Main output mode** | `type(console)` |
 | **Output format** | NASM assembly / flat binary |
 | **Compiler backend** | Private |
 | **Stability** | Alpha |
+| **Main focus** | OSDev / kernel experiments |
 
 ---
 
-## Design Goal
+# Design Goal
 
-Sentinel exists to provide a readable low-level syntax while still keeping the generated output close to the machine.
+Sentinel exists to provide readable low-level syntax while still keeping the generated output close to the machine.
 
 ```text
 Readable Sentinel code
@@ -32,58 +34,111 @@ Readable Sentinel code
 Explicit compiler pipeline
         │
         ▼
+Semantic diagnostics
+        │
+        ▼
 NASM assembly
         │
         ▼
 Flat binary
 ```
 
-Sentinel is not intended to hide the hardware completely.
+Sentinel is not designed to hide hardware.
 
-It is designed for controlled low-level experiments.
+It is designed to make low-level programming easier to write, inspect, and debug.
 
 ---
 
-## Compilation Pipeline
+# What Sentinel Is
+
+Sentinel is:
+
+| Area | Meaning |
+| :--- | :--- |
+| OSDev-first | Designed around bootloaders, kernels, and low-level experiments |
+| NASM-oriented | Generates readable NASM-style assembly |
+| Flat-binary capable | Can produce flat binary output |
+| Step-based | Functions use numbered stages |
+| Explicit | State and mutation are visible |
+| Experimental | Semantics are still evolving |
+
+Sentinel is especially suited for:
 
 ```text
-.sl source file
-      │
-      ▼
+bootloaders
+kernel experiments
+flat binaries
+VGA text output
+low-level learning
+hardware-near prototypes
+OSDev stress tests
+```
+
+---
+
+# What Sentinel Is Not
+
+Sentinel is currently not:
+
+| Not A | Reason |
+| :--- | :--- |
+| Production language | Still alpha |
+| C/C++ replacement | Ecosystem and tooling are not comparable yet |
+| Complete OS framework | OS libraries are planned later |
+| Safe language | Memory safety is not implemented |
+| Full standard library | `lib(std)` is planned for `v0.4-alpha` |
+| Full inline ASM system | Low-code is still backend-dependent |
+| Desktop app language | Desktop APIs are not a current target |
+| Self-hosting compiler | Long-term goal, not current |
+
+---
+
+# Compilation Pipeline
+
+```text
+.sl source
+    │
+    ▼
 Lexer
-      │
-      ▼
+    │
+    ▼
 Parser
-      │
-      ▼
+    │
+    ▼
 AST
-      │
-      ▼
+    │
+    ▼
+Semantic Analyzer
+    │
+    ▼
 Code Generator
-      │
-      ▼
+    │
+    ▼
 NASM Assembly
-      │
-      ▼
+    │
+    ▼
 Flat Binary
 ```
 
-Short form:
+Short version:
 
 ```text
-.sl  ->  Lexer  ->  Parser  ->  AST  ->  NASM  ->  .bin
+.sl -> Lexer -> Parser -> AST -> Semantic Analyzer -> NASM -> .bin
 ```
 
 ---
 
-## File Structure
+# File Structure
 
 A Sentinel source file usually follows this order:
 
 ```text
-mode
-type(...)
-program body
+optional compiler mode / options
+architecture mode
+output mode
+flat storage declarations
+function declarations
+program flow
 ```
 
 Example:
@@ -92,35 +147,50 @@ Example:
 x64
 type(console)
 
-local msg = "hello"
+local counter = 0
 
-console_print(msg)
+create main()
+    (1) console_print("hello")
+    (2) redo: counter to counter + 1
+
+start main()
 ```
 
 ---
 
-## Compilation Modes
+# Architecture Modes
+
+Sentinel supports architecture mode declarations.
 
 | Mode | Status | Description |
 | :--- | :--- | :--- |
-| `x16` | Experimental | 16-bit real mode experiments |
+| `x16` | Experimental | 16-bit real mode / bootloader experiments |
 | `x32` | Experimental | 32-bit protected mode experiments |
-| `x64` | Main tested mode | 64-bit long mode experiments |
+| `x64` | Main tested mode | 64-bit long mode / kernel experiments |
 
-Current strongest and most tested path:
+Current strongest path:
 
 ```sl
 x64
 type(console)
 ```
 
+Boot-sector path exists experimentally:
+
+```sl
+custing(silk)
+x16
+```
+
 ---
 
-## Output Modes
+# Output Modes
 
-### `type(console)`
+## `type(console)`
 
-Console mode enables text output through `console_print`.
+`type(console)` enables console-style output.
+
+In `x64`, current console output uses VGA text buffer style output.
 
 ```sl
 x64
@@ -129,13 +199,43 @@ type(console)
 console_print("hello")
 ```
 
-Current `x64` console output uses VGA text buffer style output.
+In `x16`, boot-sector style output may use BIOS text output.
+
+```sl
+custing(silk)
+x16
+
+local msg = "hello"
+
+create boot()
+    (1) print(msg)
+
+start boot()
+```
 
 ---
 
-### Unsupported `type(...)` values
+## Future Output Modes
 
-The following must be treated as unsupported in `v0.2-alpha`:
+The following output modes are planned or under consideration.
+
+They are not guaranteed stable in `v0.3-alpha`.
+
+| Mode | Status | Meaning |
+| :--- | :--- | :--- |
+| `type(kernel)` | Planned | Kernel context without default console setup |
+| `type(raw)` | Planned | Minimal output, no automatic runtime/output setup |
+| `type(boot)` | Planned / possible | Explicit boot-sector behavior |
+
+No separate `type(driver)` mode is planned.
+
+Drivers should be written as normal Sentinel code using OSDev libraries.
+
+---
+
+## Unsupported `type(...)` Values
+
+The following must be treated as unsupported unless documented later:
 
 ```text
 type(driver)
@@ -145,11 +245,11 @@ type(service)
 type(library)
 ```
 
-If a value is not explicitly supported by the compiler, it must not be invented by tools, documentation generators, or AI agents.
+If a value is not explicitly supported by the compiler, tools and AI agents must not invent behavior for it.
 
 ---
 
-## Comments
+# Comments
 
 Sentinel supports comment blocks using double dots:
 
@@ -160,10 +260,9 @@ Sentinel supports comment blocks using double dots:
 Multiline comment style:
 
 ```sl
-.. 
-   comment line 1
-   comment line 2
-   comment line 3
+..
+    comment line 1
+    comment line 2
 ..
 ```
 
@@ -171,49 +270,149 @@ Comments are ignored by the compiler.
 
 ---
 
-## Variables
+# Core Model
 
-Variables are declared with `local`.
+Sentinel `v0.3-alpha` uses a flat storage model.
+
+It does not use classical lexical scopes.
+
+Core concepts:
+
+| Concept | Meaning |
+| :--- | :--- |
+| `local` | Declares flat storage |
+| `redo` | Mutates existing storage |
+| Function parameter | Temporary input name |
+| Function step | Numbered compiler-visible stage |
+| Function name | Callable symbol |
+| `start function(...)` | Function call or step call |
+| `get function(...) result()` | Function call with result access |
+
+Important:
+
+```text
+local is storage.
+redo is mutation.
+params are inputs.
+steps are compiler-visible.
+```
+
+Sentinel code should be written as ordered flat machine logic.
+
+---
+
+# Flat Storage Discipline
+
+Storage names are flat per source file.
+
+Recommended:
 
 ```sl
-local x = 10
-local y = 5
-local msg = "hello"
+local result = 0
+
+create add(a, b)
+    (1) redo: result to a + b
+
+start add(x, y)
+```
+
+Avoid:
+
+```sl
+create add(a, b)
+    (1) local result = a + b
+```
+
+In `v0.3-alpha`, `local` inside functions is rejected.
+
+Reason:
+
+```text
+local allocates storage.
+function steps generate labels.
+function-local storage can create duplicate or unsafe NASM labels.
+```
+
+Use top-level storage and mutate it with `redo`.
+
+---
+
+# Reserved Names
+
+Reserved keywords cannot be used as storage, function, or parameter names.
+
+Examples:
+
+```text
+local
+redo
+create
+start
+get
+result
+if
+then
+else
+end
+while
+repeat
+try
+catch
+x16
+x32
+x64
+console_print
+FREERAM
+type
+todo
+```
+
+Invalid:
+
+```sl
+local result = 10
+```
+
+Recommended:
+
+```sl
+local math_result = 10
 ```
 
 ---
 
-## Numeric Variables
+# Values
 
-Numeric variables are currently the most stable value type.
+## Integers
+
+Numeric values are the most stable value type.
 
 ```sl
 local x = 10
 local y = 20
-local z = x + y
 ```
 
 Supported numeric operations:
 
 | Operator | Meaning |
 | :--- | :--- |
-| `+` | addition |
-| `-` | subtraction |
-| `*` | multiplication |
-| `/` | division, experimental |
-| `%` | modulo, experimental |
-| `>` | greater than |
-| `<` | less than |
-| `>=` | greater or equal |
-| `<=` | less or equal |
-| `==` | equal |
-| `!=` | not equal |
+| `+` | Addition |
+| `-` | Subtraction |
+| `*` | Multiplication |
+| `/` | Division, experimental |
+| `%` | Modulo, experimental |
+| `>` | Greater than |
+| `<` | Less than |
+| `>=` | Greater or equal |
+| `<=` | Less or equal |
+| `==` | Equal |
+| `!=` | Not equal |
 
 ---
 
-## String Variables
+## Strings
 
-String variables are supported for storage and output.
+String values are supported for storage and output.
 
 ```sl
 local msg = "hello"
@@ -221,9 +420,9 @@ local msg = "hello"
 console_print(msg)
 ```
 
-String comparison is not stable in `v0.2-alpha`.
+String comparison is not stable in `v0.3-alpha`.
 
-This is not guaranteed to work correctly:
+Avoid:
 
 ```sl
 if msg == "hello" then
@@ -234,16 +433,16 @@ end
 Reason:
 
 ```text
-String values may currently behave like pointers / labels, not full string objects.
+String values may currently behave like labels / pointers, not full string objects.
 ```
 
 ---
 
-## Boolean Values
+## Boolean-Like Values
 
 Boolean-like values may be represented numerically.
 
-Recommended style in `v0.2-alpha`:
+Recommended:
 
 ```sl
 local enabled = 1
@@ -260,57 +459,31 @@ end
 
 ---
 
-## Arrays
+## Null
 
-Numeric arrays are supported.
-
-```sl
-local arr = [10, 20, 30, 40]
-```
-
-Array indexing is supported.
-
-```sl
-local picked = arr[2]
-```
-
-Example:
-
-```sl
-x64
-type(console)
-
-local values = [3, 6, 9]
-local x = values[1]
-
-if x == 6 then
-    console_print("array index ok")
-end
-```
+`null` exists as a token-level concept, but complete null semantics are not stable yet.
 
 ---
 
-## Array Limitations
+# Variables
 
-Array bounds are not checked in `v0.2-alpha`.
+Variables are declared with `local`.
 
-This may compile but is unsafe:
+In Sentinel terminology, `local` currently means flat storage declaration.
 
 ```sl
-local arr = [1, 2, 3]
-local x = arr[999]
+local x = 10
+local y = 20
+local msg = "hello"
 ```
 
-Expected behavior:
+`local` does not create a classical scoped local variable.
 
-```text
-No safety guarantee.
-The generated code may read unrelated memory.
-```
+It creates storage.
 
 ---
 
-## Variable Mutation
+# Mutation
 
 Variables are modified with `redo`.
 
@@ -323,19 +496,58 @@ redo: x to x - 1
 redo: x to x * 2
 ```
 
-Example:
+`redo` requires existing storage.
+
+Invalid:
 
 ```sl
-local counter = 0
+redo: x to 1
+```
 
-repeat(3)
-    redo: counter to counter + 1
-end
+If `x` was not declared, this fails with semantic error `S008`.
+
+---
+
+# Arrays
+
+Numeric arrays are supported.
+
+```sl
+local values = [10, 20, 30, 40]
+```
+
+Array indexing is supported.
+
+```sl
+local picked = values[2]
+```
+
+Variable indexing is supported in tested x64 programs.
+
+```sl
+local index = 1
+local picked = values[index]
+```
+
+Array bounds are not checked in `v0.3-alpha`.
+
+Unsafe:
+
+```sl
+local arr = [1, 2, 3]
+local x = arr[999]
+```
+
+Current behavior:
+
+```text
+No safety guarantee.
+Generated code may read unrelated memory.
 ```
 
 ---
 
-## Control Flow
+# Control Flow
 
 Sentinel supports basic numeric control flow.
 
@@ -399,14 +611,6 @@ Recommended condition style:
 numeric variable comparison numeric value
 ```
 
-Examples:
-
-```sl
-while x > 0
-while counter < 10
-while energy >= 1
-```
-
 String-based `while` conditions are not stable.
 
 ---
@@ -452,7 +656,7 @@ repeat(0)
 repeat(-1)
 ```
 
-These are not guaranteed to behave safely in `v0.2-alpha`.
+These are not guaranteed to behave safely in `v0.3-alpha`.
 
 ---
 
@@ -482,8 +686,10 @@ create function_name(param1, param2)
 Example:
 
 ```sl
+local sum = 0
+
 create add(a, b)
-    (1) local sum = a + b
+    (1) redo: sum to a + b
     (2) console_print("add done")
 ```
 
@@ -517,7 +723,6 @@ Invalid:
 create boot_sequence()
     console_print("boot: cpu")
     console_print("boot: memory")
-    console_print("boot: drivers")
 ```
 
 The invalid example has no numbered steps and must not be considered valid Sentinel function syntax.
@@ -526,21 +731,13 @@ The invalid example has no numbered steps and must not be considered valid Senti
 
 ## Function Step Rules
 
-Each function step starts with a line marker:
+Each function step starts with:
 
 ```text
 (N)
 ```
 
 Where `N` is a positive integer.
-
-Examples:
-
-```sl
-(1) console_print("stage 1")
-(2) console_print("stage 2")
-(3) console_print("stage 3")
-```
 
 Rules:
 
@@ -550,39 +747,15 @@ Rules:
 | Step markers are syntax | They are not comments |
 | Steps are ordered | `(1)` comes before `(2)` |
 | Steps are useful for OSDev | They make boot/debug stages explicit |
-| Steps are compiler-visible | Code generation can create labels from steps |
-
----
-
-## Function Body Rules
-
-Recommended `v0.2-alpha` style:
-
-```sl
-create example()
-    (1) console_print("first")
-    (2) console_print("second")
-    (3) console_print("third")
-```
-
-If multiple actions are needed, use multiple steps.
-
-Recommended:
-
-```sl
-create init()
-    (1) console_print("init begin")
-    (2) local x = 10
-    (3) console_print("init end")
-```
-
-Avoid writing many unrelated statements under one step.
+| Steps are compiler-visible | Codegen can create labels from steps |
 
 ---
 
 ## Function Calls
 
 Functions are called with `start`.
+
+Normal call:
 
 ```sl
 create hello()
@@ -591,14 +764,91 @@ create hello()
 start hello()
 ```
 
-Function call with arguments:
+Call with named arguments:
 
 ```sl
-create print_sum(a, b)
-    (1) local sum = a + b
-    (2) console_print("sum done")
+local x = 1
+local y = 2
+local sum = 0
 
-start print_sum(1, 2)
+create add(a, b)
+    (1) redo: sum to a + b
+
+start add(x, y)
+```
+
+---
+
+## Step Calls
+
+Numeric values inside `start function(N)` are step selectors.
+
+Example:
+
+```sl
+create report()
+    (1) console_print("one")
+    (2) console_print("two")
+
+start report(2)
+```
+
+This calls step `(2)`.
+
+Important:
+
+```text
+start function(2) means step 2.
+start function(arg) means named argument.
+```
+
+If `2` is intended as data, declare it first:
+
+```sl
+local value = 2
+
+start function(value)
+```
+
+---
+
+## Unsafe Step Calls
+
+In `v0.3-alpha`, direct step calls are blocked for parameterized functions.
+
+Invalid:
+
+```sl
+local result = 0
+
+create add(a, b)
+    (1) console_print("add")
+    (2) redo: result to a + b
+
+start add(2)
+```
+
+This fails with `S020`.
+
+Reason:
+
+```text
+Step labels do not prepare function argument registers.
+Calling a step directly may use stale rdi/rsi/rdx/rcx/r8/r9 values.
+```
+
+Recommended:
+
+```sl
+local x = 10
+local y = 20
+local result = 0
+
+create add(a, b)
+    (1) console_print("add")
+    (2) redo: result to a + b
+
+start add(x, y)
 ```
 
 ---
@@ -616,7 +866,11 @@ In `x64`, the first arguments are currently passed through registers.
 | `arg5` | `r8` |
 | `arg6` | `r9` |
 
-More than six arguments are not stable in `v0.2-alpha`.
+More than six arguments are not stable in `v0.3-alpha`.
+
+Argument count is validated by the semantic analyzer.
+
+Wrong argument count fails with `S017`.
 
 ---
 
@@ -631,17 +885,20 @@ local value = get function_name(args) result()
 Example:
 
 ```sl
-create add(a, b)
-    (1) local sum = a + b
-    (2) console_print("add done")
+local result_storage = 0
+local left = 10
+local right = 20
 
-local math_result = get add(10, 20) result()
+create add(a, b)
+    (1) redo: result_storage to a + b
+
+local value = get add(left, right) result()
 ```
 
 Important:
 
 ```text
-v0.2-alpha does not have a real return keyword yet.
+v0.3-alpha does not have a real return keyword yet.
 get result() currently depends on the generated rax value.
 ```
 
@@ -649,69 +906,22 @@ This is experimental and may change.
 
 ---
 
-## Reserved Word: `result`
+## Result Step Selectors
 
-`result` is a keyword used by:
+`get ... result(N)` may refer to numbered result behavior.
 
-```sl
-get function_name() result()
-```
+Missing result steps are validated.
 
-Do not use `result` as a variable name.
-
-Invalid:
+Example invalid case:
 
 ```sl
-local result = 10
+create calc()
+    (1) console_print("one")
+
+local value = get calc() result(9)
 ```
 
-Recommended:
-
-```sl
-local math_result = 10
-local call_result = get add(1, 2) result()
-```
-
----
-
-## Function Scope Limitations
-
-Function-local variables are currently not fully scoped.
-
-This means function locals can collide with globals or parameters.
-
-Problematic example:
-
-```sl
-local a = 10
-
-create test(a)
-    (1) local a = a + 1
-```
-
-This may generate duplicate labels:
-
-```asm
-sl_var_a dq 10
-sl_var_a dq 0
-```
-
-Known NASM error:
-
-```text
-label `sl_var_a` inconsistently redefined
-```
-
-This is a known `v0.2-alpha` limitation.
-
-Planned fix for `v0.3-alpha`:
-
-| Source Concept | Planned Internal Label |
-| :--- | :--- |
-| Global variable | `sl_var_counter` |
-| Function local | `sl_func_math_var_sum` |
-| Function parameter | register / stack slot |
-| Temporary value | `sl_tmp_0` |
+This fails with `S012`.
 
 ---
 
@@ -731,7 +941,7 @@ local msg = "hello"
 console_print(msg)
 ```
 
-Numeric output is not guaranteed to be formatted as decimal text in `v0.2-alpha`.
+Numeric output is not guaranteed to be formatted as decimal text in all modes.
 
 Recommended usage:
 
@@ -741,9 +951,33 @@ console_print("status message")
 
 ---
 
+## x64 Print Register Preservation
+
+In `v0.3-alpha`, generated print calls preserve `rsi`.
+
+Reason:
+
+```text
+x64 arg2 uses rsi.
+console_print also uses rsi as string pointer.
+```
+
+Expected generated shape:
+
+```asm
+push rsi
+lea  rsi, [rel sl_pstr_0]
+call sl_print_str
+pop  rsi
+```
+
+This prevents `console_print` from destroying the second function argument.
+
+---
+
 # Low-Code Blocks
 
-`low-code` allows low-level byte emission.
+`low-code` allows low-level byte emission and selected low-level commands.
 
 Current stable form:
 
@@ -760,44 +994,30 @@ db 0x90
 db 0x90
 ```
 
----
+Selected low-level commands may also be supported depending on backend.
 
-## Low-Code Rules
-
-| Rule | Description |
-| :--- | :--- |
-| `emit` is supported | Emits raw byte values |
-| Byte values should be numeric | Example: `0x90` |
-| Raw NASM is not stable | Do not assume inline ASM works |
-| Comments inside low-code are risky | Keep low-code minimal |
-
----
-
-## Unsupported Low-Code Example
-
-Do not assume this is supported:
+Example from x16-style low-code:
 
 ```sl
 low-code:
-    in al, 0x60
-    movzx rax, al
-    out 0x20, al
+    cli
+    emit 0x31, 0xC0
+    halt
 ```
 
-Current recommended form:
+Important:
 
-```sl
-low-code:
-    emit 0x90
+```text
+emit is supported.
+selected low-level commands may be supported.
+full arbitrary inline NASM is backend-dependent and not guaranteed stable.
 ```
-
-If raw inline ASM support is added later, it must be documented separately.
 
 ---
 
 # Try / Catch
 
-`try/catch` syntax exists in `v0.2-alpha`.
+`try/catch` syntax exists in `v0.3-alpha`.
 
 Example:
 
@@ -812,7 +1032,7 @@ end
 Important:
 
 ```text
-try/catch is syntax-only in v0.2-alpha.
+try/catch is syntax-only in v0.3-alpha.
 There is no complete exception runtime yet.
 ```
 
@@ -852,12 +1072,148 @@ It is not a complete heap allocator.
 
 ---
 
-# Supported v0.2-alpha Syntax Summary
+# Semantic Diagnostics
+
+`v0.3-alpha` introduces semantic diagnostics before NASM generation.
+
+Goal:
+
+```text
+Invalid Sentinel should fail as Sentinel.
+```
+
+---
+
+## Semantic Error Codes
+
+| Code | Meaning |
+| :--- | :--- |
+| `S001` | Reserved keyword used as name |
+| `S002` | Duplicate function |
+| `S003` | Duplicate storage |
+| `S004` | Duplicate parameter |
+| `S005` | Parameter/storage collision |
+| `S007` | Cannot `redo` parameter |
+| `S008` | Unknown storage mutation |
+| `S009` | Unknown function |
+| `S010` | Recursive call unsupported |
+| `S011` | `local` inside function blocked |
+| `S012` | Missing function step |
+| `S013` | Invalid `redo` target |
+| `S014` | Storage/function collision |
+| `S015` | Unknown storage symbol |
+| `S016` | Mixed step selector and args |
+| `S017` | Wrong function argument count |
+| `S018` | Duplicate function step |
+| `S019` | `FREERAM` unknown storage |
+| `S020` | Unsafe step-call on parameterized function |
+
+`S006` is currently reserved / unused.
+
+---
+
+## Example Semantic Errors
+
+Unknown function:
+
+```sl
+start missing()
+```
+
+Expected:
+
+```text
+[SEMANTIC S009] Unknown function `missing`.
+```
+
+Missing step:
+
+```sl
+create boot()
+    (1) console_print("boot")
+
+start boot(9)
+```
+
+Expected:
+
+```text
+[SEMANTIC S012] Function `boot` has no step `(9)`.
+```
+
+Duplicate storage:
+
+```sl
+local a = 1
+local a = 2
+```
+
+Expected:
+
+```text
+[SEMANTIC S003] Storage `a` already exists.
+```
+
+Unsafe parameterized step call:
+
+```sl
+create add(a, b)
+    (1) console_print("add")
+    (2) console_print("done")
+
+start add(2)
+```
+
+Expected:
+
+```text
+[SEMANTIC S020] Cannot step-call function `add` because it has parameters.
+```
+
+---
+
+# ABI / Register Model
+
+## x64 Function Arguments
+
+Current x64 function arguments:
+
+| Argument | Register |
+| :--- | :--- |
+| 1 | `rdi` |
+| 2 | `rsi` |
+| 3 | `rdx` |
+| 4 | `rcx` |
+| 5 | `r8` |
+| 6 | `r9` |
+
+## Result Register
+
+Current result behavior uses:
+
+```text
+rax
+```
+
+`get ... result()` depends on generated `rax` behavior.
+
+This is experimental.
+
+## Print Preservation
+
+Generated print calls preserve `rsi`.
+
+This protects the second function argument from being overwritten by string printing.
+
+---
+
+# Supported v0.3-alpha Syntax Summary
 
 ## Stable / Mostly Working
 
 ```text
 x64
+x16 boot-sector experiments
 type(console)
 local
 redo
@@ -867,11 +1223,14 @@ repeat(...) / end
 create function(...)
 numbered function steps: (1), (2), (3)
 start function(...)
+start function(N) for no-param step calls
 get function(...) result()
 console_print(...)
-arrays with numeric literals
+print(...) in supported modes
+numeric arrays
 array indexing
 low-code with emit
+selected low-code commands
 FREERAM(...)
 ```
 
@@ -887,29 +1246,57 @@ modulo
 try/catch runtime behavior
 FREERAM memory semantics
 get result() return semantics
-function-local variables
+low-code raw command support
 ```
 
 ---
 
-## Not Supported In v0.2-alpha
+## Planned
+
+```text
+lib(std)
+type(kernel)
+type(raw)
+OSDev command helpers
+panic()
+halt()
+nop()
+read_port()
+write_port()
+io_wait()
+pic_eoi()
+vga_clear()
+vga_print()
+```
+
+---
+
+## Not Supported In v0.3-alpha
 
 The following features must not be invented:
 
 ```text
 type(driver)
-raw inline NASM inside low-code
+type(network)
+type(app)
+type(service)
+raw arbitrary inline NASM as a guaranteed feature
 return keyword
 throw keyword
 classes
+interfaces
+namespaces
 full imports/modules
 string comparison
-pointer syntax
 interrupt handler syntax
-driver declaration syntax
+on_interrupt(...)
+irq(...)
+port[0x60]
 heap allocator API
 Windows desktop app API
 Linux syscall API
+network stack
+filesystem layer
 self-hosting compiler
 ```
 
@@ -921,7 +1308,7 @@ If a feature is not explicitly listed as supported, it must be treated as unsupp
 
 This section exists to prevent AI tools from inventing Sentinel syntax.
 
-When generating Sentinel Lang `v0.2-alpha` code, use only documented features.
+When generating Sentinel Lang `v0.3-alpha` code, use only documented features.
 
 ---
 
@@ -931,6 +1318,7 @@ AI tools may generate code using:
 
 ```text
 x64
+x16 boot examples if explicitly requested
 type(console)
 local numeric variables
 local string variables for console_print
@@ -944,8 +1332,10 @@ repeat(number_or_variable) ... end
 create function(...)
 numbered function steps
 start function(...)
+start function(N) only for no-param step calls
 get function(...) result()
-low-code with emit only
+low-code with emit
+selected documented low-code commands
 try/catch syntax only
 FREERAM(variable)
 ```
@@ -960,30 +1350,30 @@ AI tools must not generate:
 type(driver)
 type(service)
 type(app)
-raw assembly instructions inside low-code
+type(network)
+raw arbitrary assembly as guaranteed portable Sentinel
 return
 throw
 class
 interface
 namespace
-import
-use modules unless documented
+full module system
 string comparisons
 interrupt handlers
 on_interrupt(...)
 irq(...)
 port[0x60]
-io_in8(...)
-io_out8(...)
-pointer types
 heap allocation APIs
+network APIs
+filesystem APIs
+desktop APIs
 ```
 
 ---
 
-## Function Step Reminder For AI Tools
+## Function Step Reminder
 
-This is valid Sentinel:
+Valid Sentinel:
 
 ```sl
 create init()
@@ -991,7 +1381,7 @@ create init()
     (2) console_print("init end")
 ```
 
-This is not valid Sentinel function syntax:
+Invalid Sentinel:
 
 ```sl
 create init()
@@ -999,17 +1389,15 @@ create init()
     console_print("init end")
 ```
 
-The numbered steps are required.
+Numbered steps are required.
 
 They are not optional.
-
-They are not comments.
 
 They are part of the language.
 
 ---
 
-# Example: Valid v0.2-alpha Program
+# Valid v0.3-alpha Example
 
 ```sl
 x64
@@ -1017,99 +1405,256 @@ type(console)
 
 local counter = 0
 local limit = 3
-local values = [10, 20, 30]
-local picked = values[1]
-
-console_print("program start")
+local result = 0
 
 create add(a, b)
-    (1) local sum = a + b
+    (1) redo: result to a + b
     (2) console_print("add done")
 
 repeat(limit)
     redo: counter to counter + 1
 end
 
-if picked == 20 then
-    console_print("array ok")
-end
+start add(counter, limit)
 
-local math_result = get add(5, 7) result()
-
-if math_result > 0 then
+if result > 0 then
     console_print("result ok")
 end
-
-low-code:
-    emit 0x90
-    emit 0x90
-
-console_print("program done")
 ```
 
 ---
 
-# Example: Invalid v0.2-alpha Program
+# Valid Step Call Example
 
 ```sl
 x64
-type(driver)
+type(console)
 
-local status = "running"
+create boot_report()
+    (1) console_print("boot line one")
+    (2) console_print("boot line two")
 
-create keyboard_driver()
-    console_print("missing numbered step")
-
-while status == "running"
-    low-code:
-        in al, 0x60
-end
+start boot_report(2)
 ```
 
-Reasons:
-
-| Problem | Explanation |
-| :--- | :--- |
-| `type(driver)` | Not supported |
-| Function has no numbered steps | Invalid function syntax |
-| String comparison | Not stable |
-| Raw ASM in `low-code` | Not supported |
-| Driver semantics | Not implemented |
+This is valid because `boot_report` has no parameters.
 
 ---
 
-# Known v0.2-alpha Bugs
+# Invalid Step Call Example
 
-| Bug | Status |
-| :--- | :--- |
-| Function locals can collide with globals | Known |
-| Function locals can collide with parameters | Known |
-| `try/catch` has no real runtime behavior | Known |
-| `get result()` has no explicit return model | Known |
-| Arrays have no bounds checks | Known |
-| Strings do not have full comparison semantics | Known |
+```sl
+x64
+type(console)
+
+local result = 0
+
+create add(a, b)
+    (1) console_print("add")
+    (2) redo: result to a + b
+
+start add(2)
+```
+
+This is invalid in `v0.3-alpha`.
+
+Reason:
+
+```text
+add has parameters.
+step labels do not prepare argument registers.
+```
+
+Expected:
+
+```text
+S020
+```
 
 ---
 
-# Planned v0.3-alpha Improvements
+# Valid Boot-Sector Style Example
 
-| Area | Goal |
+```sl
+custing(silk)
+x16
+
+local msg = "Hello from Bootloader!"
+
+create boot()
+    (1) low-code:
+            cli
+            emit 0x31, 0xC0
+            emit 0x8E, 0xD8
+            emit 0x8E, 0xC0
+            emit 0x8E, 0xD0
+            emit 0xBC, 0x00, 0x7C
+            sti
+    (2) print(msg)
+    (3) low-code:
+            cli
+            halt
+
+start boot()
+```
+
+This path is experimental but important for Sentinel's OSDev direction.
+
+---
+
+# Testing Status
+
+`v0.3-alpha` has passed:
+
+```text
+semantic diagnostics tests
+register clobber tests
+large ordered flat-storage stress tests
+Core Hardening Beast v0.3.1
+x64 NASM flat binary generation
+x16 boot-sector style generation
+```
+
+See `TEST_REPORT.md` for test details.
+
+---
+
+# v0.4-alpha Direction
+
+`v0.4-alpha` should begin the first OSDev command library work.
+
+Primary planned library:
+
+```sl
+lib(std)
+```
+
+Possible commands:
+
+```text
+halt()
+nop()
+panic(msg)
+read_port(port)
+write_port(port, value)
+io_wait()
+pic_eoi()
+vga_clear()
+vga_print(msg)
+```
+
+`v0.4-alpha` should not become a huge standard library.
+
+It should provide small compile-time OSDev commands that lower directly into low-level code.
+
+---
+
+# Graphics Direction
+
+VESA is not a primary planned target.
+
+Future graphics direction should prefer:
+
+```text
+GOP
+framebuffer
+raw pixel output
+small graphics primitives
+```
+
+Near-term graphics support should remain simple.
+
+---
+
+# Driver Direction
+
+No separate `type(driver)` mode is planned.
+
+Drivers should be written as normal Sentinel code using OSDev libraries.
+
+Example future style:
+
+```sl
+lib(std)
+
+x64
+type(kernel)
+
+local key = 0
+
+create read_key()
+    (1) redo: key to read_port(0x60)
+
+start read_key()
+```
+
+---
+
+# Networking Direction
+
+Networking is not planned for `v0.4-alpha`.
+
+A future network stack would require:
+
+```text
+PCI
+NIC driver
+Ethernet
+ARP
+IPv4
+ICMP
+UDP
+DHCP
+DNS
+TCP
+```
+
+First realistic target:
+
+```text
+ICMP ping on controlled hardware or emulator target
+```
+
+---
+
+# Current Reliability
+
+| Category | State |
 | :--- | :--- |
-| Scope system | Separate globals, params, locals, temporaries |
-| Semantic errors | Catch invalid code before NASM |
-| Better diagnostics | Report Sentinel source lines |
-| Return model | Add explicit result semantics |
-| Function locals | Avoid global label collisions |
-| AI compatibility | Keep strict documented syntax |
+| Small programs | High |
+| Medium programs | High |
+| Large ordered flat-storage programs | Medium-High |
+| Invalid syntax | Parser errors |
+| Known invalid semantics | Semantic errors |
+| Unknown semantics | May still need hardening |
+| Runtime safety | Not guaranteed |
+| OSDev safety | Experimental |
+| x64 codegen | Main tested path |
+| x16 boot output | Experimental but working |
 
 ---
 
 # Final Notes
 
-Sentinel Lang `v0.2-alpha` is a real experimental compiler stage.
+Sentinel Lang `v0.3-alpha` is a real experimental compiler stage.
 
-It can compile non-trivial Sentinel programs into NASM output, but the language is still early.
+It is still alpha.
 
-The current priority is correctness, predictable semantics, clear diagnostics, and strict documentation.
+It is not production-ready.
 
-The compiler should reject unsupported features instead of silently generating broken code.
+But it can compile large ordered low-level programs into NASM assembly and flat binary output.
+
+The current focus is:
+
+```text
+core hardening
+semantic diagnostics
+flat storage discipline
+OSDev-first direction
+```
+
+Next major milestone:
+
+```text
+v0.4-alpha = first lib(std) OSDev command pack
+```
