@@ -1,8 +1,8 @@
 # Sentinel Lang Roadmap
 
-> Development roadmap for Sentinel Lang from `v0.2-alpha` to `v1.0`.
+> Development roadmap for Sentinel Lang from `v0.3-alpha` toward `v1.0`.
 
-Sentinel Lang is an experimental low-level systems programming language for OSDev, kernels, bootloaders, and direct NASM-oriented code generation.
+Sentinel Lang is an experimental OSDev-first low-level language for bootloaders, kernels, flat binaries, and direct NASM-oriented code generation.
 
 This roadmap describes planned milestones.  
 Features may change as the compiler evolves.
@@ -27,31 +27,37 @@ working x64 language core
 v0.3-alpha
     │
     ▼
-scopes + semantic diagnostics
+core hardening + semantic diagnostics
     │
     ▼
-v0.4-alpha / stable
+v0.4-alpha
     │
     ▼
-OSDev libraries
+first lib(std) OSDev command pack
     │
     ▼
 v0.5-alpha
     │
     ▼
-demo kernel / mini OS
+demo kernel / mini OS direction
     │
     ▼
 v0.6 - v0.8
     │
     ▼
-desktop and host libraries
+runtime, drivers, host tooling, larger experiments
+    │
+    ▼
+v0.9-beta
+    │
+    ▼
+hardening before beta/stable work
     │
     ▼
 v1.0
     │
     ▼
-stable experimental systems language
+stable experimental OSDev language
 ```
 
 ---
@@ -61,16 +67,15 @@ stable experimental systems language
 | Version | Status | Main Goal |
 | :--- | :--- | :--- |
 | `v0.1-alpha` | Completed | Compiler foundation |
-| `v0.2-alpha` | Current | Working x64 language core |
-| `v0.3-alpha` | Planned | Scopes and semantic errors |
-| `v0.4-alpha` | Planned | First OSDev micro-libs |
-| `v0.4-stable` | Planned | Stable OSDev standard library |
-| `v0.5-alpha` | Planned | Demo kernel / mini OS |
-| `v0.6-alpha` | Planned | Host target research |
-| `v0.7-alpha` | Planned | Desktop primitives |
-| `v0.8-alpha` | Planned | GUI and application libraries |
-| `v0.9-beta` | Planned | Hardening and ecosystem cleanup |
-| `v1.0` | Long-term | Stable experimental release |
+| `v0.2-alpha` | Completed | Working x64 language core |
+| `v0.3-alpha` | Current | Core hardening and semantic diagnostics |
+| `v0.4-alpha` | Planned | First `lib(std)` OSDev command pack |
+| `v0.5-alpha` | Planned | Demo kernel / mini OS direction |
+| `v0.6-alpha` | Planned | Runtime and low-level library expansion |
+| `v0.7-alpha` | Planned | Driver and hardware helper experiments |
+| `v0.8-alpha` | Planned | Host tooling research |
+| `v0.9-beta` | Planned | Testing, diagnostics, and documentation hardening |
+| `v1.0` | Long-term | Stable experimental OSDev release |
 
 ---
 
@@ -92,225 +97,232 @@ Goal: build the first working compiler pipeline.
 Result:
 
 ```text
-Sentinel source can be compiled into NASM output.
+Sentinel became a real compiler prototype.
 ```
 
 ---
 
-## v0.2-alpha — Current Language Core
+## v0.2-alpha — Working Language Core
 
-Goal: make the language compile real non-trivial programs.
+Goal: make the language core usable for non-trivial programs.
 
-| Feature | Status |
+| Area | Status |
 | :--- | :--- |
-| `local` variables | Working |
-| `redo` mutation | Working |
-| `if` / `while` / `repeat` | Working |
-| Functions with numbered steps | Working |
-| Function arguments | Working |
-| `get result()` | Experimental |
-| Arrays | Working |
-| Array indexing | Working |
-| `low-code` with `emit` | Working |
-| Large stress tests | Passing |
+| Variables / flat storage | Done |
+| `redo` mutation | Done |
+| Numeric expressions | Done |
+| `if` statements | Done |
+| `while` loops | Done |
+| `repeat` loops | Done |
+| Function declarations | Done |
+| Function calls | Done |
+| Function arguments | Done |
+| `get ... result()` | Experimental |
+| Arrays | Done |
+| Array indexing | Done |
+| Low-code byte emission | Done |
+| Large stress tests | Done |
 
-Main achievement:
+Result:
 
 ```text
-Sentinel now has a working experimental x64 language core.
+Sentinel can compile non-trivial x64 programs into NASM and flat binaries.
 ```
 
-Known weakness:
+Known weakness at this stage:
 
 ```text
-Scopes are incomplete.
-Function locals can collide with globals or parameters.
+Invalid semantic patterns could still fall through to NASM errors.
 ```
 
 ---
 
-## v0.3-alpha — Scopes and Diagnostics
+## v0.3-alpha — Core Hardening and Diagnostics
 
-Goal: fix the compiler core before adding bigger libraries.
+Goal: harden the compiler core before adding larger OSDev libraries.
 
-### Planned Work
+`v0.3-alpha` is not a classical scope-system release.
 
-| Area | Goal |
+Sentinel uses flat storage discipline.
+
+### Completed Work
+
+| Area | Status |
 | :--- | :--- |
-| Scope system | Separate globals, params, locals, temporaries |
-| Label mangling | Prevent duplicate NASM labels |
-| Semantic checker | Catch invalid Sentinel before NASM |
-| Diagnostics | Better source-level error messages |
-| Reserved words | Clear errors for names like `result` |
-| Function locals | Stop emitting unsafe global collisions |
-| Result model | Make `get result()` more predictable |
+| Semantic analyzer | Working |
+| Flat storage validation | Working |
+| Duplicate storage diagnostics | Working |
+| Unknown storage diagnostics | Working |
+| Function existence diagnostics | Working |
+| Function step validation | Working |
+| Argument count validation | Working |
+| Unsafe parameterized step-call protection | Working |
+| `local` inside function diagnostic | Working |
+| x64 `rsi` print preservation fix | Working |
+| Core Hardening Beast v0.3.1 | Passed |
 
 ### Main Target
 
 ```text
-No more NASM-level crashes for simple Sentinel semantic errors.
+No more NASM-level crashes for known simple Sentinel semantic errors.
+```
+
+### Design Rule
+
+```text
+Broken Sentinel should fail as Sentinel.
+Valid ordered flat-storage code should still compile.
 ```
 
 ---
 
-## v0.4-alpha — First OSDev Micro-Libs
+## v0.4-alpha — First OSDev Command Pack
 
-Goal: stop forcing users to write raw `emit` bytes for common OSDev operations.
+Goal: add the first small compile-time OSDev command library.
 
-### Planned Builtins
+The first library target is:
 
-| Builtin | Purpose |
+```sl
+lib(std)
+```
+
+`lib(std)` should not become a huge standard library.
+
+It should provide small low-level commands that lower directly into NASM or backend-specific snippets.
+
+### Planned Commands
+
+| Command | Purpose |
 | :--- | :--- |
-| `read_port(port)` | Read from I/O port |
-| `write_port(port, value)` | Write to I/O port |
-| `io_wait()` | Small I/O delay |
 | `halt()` | Stop CPU safely |
 | `nop()` | No-op instruction |
 | `panic(msg)` | Print error and halt |
+| `read_port(port)` | Read from I/O port |
+| `write_port(port, value)` | Write to I/O port |
+| `io_wait()` | Small I/O delay |
 | `pic_eoi()` | Send PIC end-of-interrupt |
-| `timer_wait(ticks)` | Basic timer wait |
-| `keyboard_read()` | Simple PS/2 polling helper |
+| `vga_clear()` | Clear text output |
+| `vga_print(msg)` | Minimal VGA/debug output |
 
-Example future code:
+### Non-Goals For v0.4
 
-```sl
-x64
-type(console)
-
-local scancode = read_port(0x60)
-
-if scancode == 1 then
-    panic("ESC pressed")
-end
-```
+| Not Planned | Reason |
+| :--- | :--- |
+| Full network stack | Too large for first library stage |
+| Full filesystem | Needs runtime and disk model first |
+| Full driver framework | Drivers need lower-level primitives first |
+| Desktop APIs | Not an OSDev-core feature |
+| VESA-first graphics | Future graphics direction should prefer GOP/framebuffer |
+| `type(driver)` | Drivers should be normal code using libraries |
 
 ---
 
-## v0.4-stable — OSDev Standard Library
+## v0.5-alpha — Demo Kernel / Mini OS Direction
 
-Goal: make the first stable low-level standard library.
+Goal: build a small Sentinel-powered OSDev prototype.
 
-### Planned Modules
-
-| Module | Functions |
-| :--- | :--- |
-| `io` | `read_port`, `write_port`, `io_wait` |
-| `cpu` | `halt`, `nop`, `cli`, `sti` |
-| `debug` | `panic`, `assert`, `debug_print` |
-| `pic` | `pic_remap`, `pic_mask`, `pic_unmask`, `pic_eoi` |
-| `pit` | `timer_init`, `timer_wait` |
-| `keyboard` | `keyboard_poll`, `keyboard_read_scancode` |
-| `memory` | basic memory helpers |
-
-Main target:
+Possible target:
 
 ```text
-Write simple drivers without manually knowing machine-code bytes.
+Sentinel OS v0.1
 ```
 
----
+### Planned Pieces
 
-## v0.5-alpha — Demo Kernel / Mini OS
-
-Goal: prove Sentinel can be used for a real OSDev project.
-
-### Planned Demo
-
-| Component | Goal |
+| Piece | Purpose |
 | :--- | :--- |
-| Boot flow | Minimal controlled startup |
-| Console | Text output |
-| Panic system | Debug halt |
-| Timer | Basic timing |
-| Keyboard | Basic input |
-| Memory helpers | Early memory experiments |
-| Driver examples | Small OSDev modules |
+| Boot sequence | Show Sentinel-driven boot flow |
+| Kernel entry | Start x64 kernel code |
+| VGA output | Debug text output |
+| Panic path | Stop safely with message |
+| Interrupt stubs | Prepare for IRQ work |
+| Timer smoke | Basic timing experiment |
+| Keyboard smoke | Basic input experiment |
+| Memory map stub | Prepare future memory work |
 
 Result target:
 
 ```text
-A tiny demo kernel or mini OS using Sentinel code.
+A small Sentinel-written kernel experiment.
 ```
 
 ---
 
-## v0.6-alpha — Host Target Research
+## v0.6-alpha — Runtime and Low-Level Library Expansion
 
-Goal: begin exploring non-OSDev targets.
+Goal: grow beyond first micro-commands.
 
-Possible research areas:
+Possible work:
 
 | Area | Purpose |
 | :--- | :--- |
-| Windows output | Native executable experiments |
-| Linux output | ELF/syscall experiments |
-| File I/O | Basic host interaction |
-| Process model | Program entry/exit |
-| Runtime layer | Minimal host runtime |
-
-This stage is research-focused, not stable.
-
----
-
-## v0.7-alpha — Desktop Primitives
-
-Goal: begin building application-level foundations.
-
-Possible features:
-
-| Feature | Purpose |
-| :--- | :--- |
-| Window creation | Basic desktop apps |
-| Event loop | Keyboard/mouse events |
-| File dialogs | Simple app workflows |
-| Text rendering | UI output |
-| Timers | App timing |
-| Input handling | Desktop input model |
+| Memory helpers | Basic memory operations |
+| Buffer helpers | Safer low-level buffers |
+| Better result model | More predictable function results |
+| More builtins | Reduce raw low-code needs |
+| Basic driver helpers | Build on `lib(std)` |
+| x16/x64 boot flow research | Prepare stronger OS prototypes |
 
 ---
 
-## v0.8-alpha — GUI and Application Libraries
+## v0.7-alpha — Driver and Hardware Helper Experiments
 
-Goal: build higher-level desktop libraries.
+Goal: explore driver-level abstractions without creating a separate driver language mode.
 
-Possible modules:
+Drivers should be normal Sentinel code using libraries.
 
-| Module | Purpose |
+Possible work:
+
+| Area | Purpose |
 | :--- | :--- |
-| `window` | Window management |
-| `ui` | Buttons, labels, input fields |
-| `canvas` | 2D rendering |
-| `image` | Image loading / drawing |
-| `audio` | Basic sound |
-| `app` | App lifecycle helpers |
+| Keyboard helpers | Read PS/2 keyboard data |
+| Timer helpers | PIT / timer experiments |
+| Disk helpers | ATA or sector-read experiments |
+| PCI helpers | Device discovery |
+| PIC helpers | Interrupt controller utilities |
+| Driver examples | Small OSDev modules |
 
-Long-term idea:
-
-```text
-Small native applications with simple Sentinel syntax.
-```
+No `type(driver)` is planned.
 
 ---
 
-## v0.9-beta — Hardening
+## v0.8-alpha — Host Tooling Research
 
-Goal: prepare the language for a serious `v1.0`.
+Goal: research host-side workflows without abandoning OSDev-first design.
 
-| Area | Goal |
+Possible work:
+
+| Area | Purpose |
 | :--- | :--- |
-| Test suite | Large regression tests |
+| Better CLI | Compiler UX |
+| More dumps | AST / tokens / ASM |
+| Better diagnostics | More helpful errors |
+| Test runner | Regression testing |
+| Host experiments | Controlled host-side tooling |
+
+Desktop application support is not a near-term goal.
+
+---
+
+## v0.9-beta — Hardening Before Stable Experimental Release
+
+Goal: prepare the language for serious beta-stage use.
+
+| Area | Purpose |
+| :--- | :--- |
+| Regression tests | Prevent old bugs from returning |
 | Error messages | Clear diagnostics |
 | Documentation | Complete and consistent |
-| Examples | More real projects |
+| Examples | More real programs |
 | Compiler stability | Fewer crashes |
 | Language cleanup | Remove broken syntax |
-| Library cleanup | Stable APIs |
+| Library cleanup | Stabilize OSDev commands |
 
 ---
 
-## v1.0 — Stable Experimental Release
+## v1.0 — Stable Experimental OSDev Release
 
-Goal: release a stable experimental systems language.
+Goal: release a stable experimental OSDev-first language.
 
 `v1.0` should include:
 
@@ -318,13 +330,14 @@ Goal: release a stable experimental systems language.
 | :--- | :--- |
 | Compiler | Stable core pipeline |
 | Syntax | Documented and consistent |
-| Scopes | Correct variable isolation |
+| Semantics | Predictable flat storage model |
 | Diagnostics | Good source-level errors |
 | x64 | Stable main target |
-| OSDev libs | Usable low-level library |
+| x16 | Documented boot-sector path |
+| OSDev libs | Usable low-level command library |
 | Examples | Real working projects |
 | Tests | Regression suite |
-| Docs | README, spec, status, roadmap |
+| Docs | README, spec, status, roadmap, test report |
 
 Final goal:
 
@@ -336,7 +349,7 @@ A practical experimental language for OSDev and low-level systems programming.
 
 ## Long-Term Vision
 
-Sentinel should become a language that allows developers to write low-level systems code with readable syntax while still understanding what happens close to the machine.
+Sentinel should become a language for writing low-level systems code with readable syntax while still understanding what happens close to the machine.
 
 The long-term dream:
 
@@ -345,9 +358,9 @@ Readable syntax
     +
 Low-level control
     +
-OSDev libraries
+OSDev command libraries
     +
-Native output
+Native flat output
     =
 Sentinel Lang
 ```
@@ -357,15 +370,15 @@ Sentinel Lang
 ## Current Priority
 
 ```text
-1. Finish v0.2-alpha documentation
-2. Fix scopes in v0.3-alpha
-3. Improve diagnostics
-4. Add OSDev micro-libs
-5. Build the first Sentinel demo kernel
+1. Finish v0.3-alpha documentation
+2. Keep core hardening tests passing
+3. Begin v0.4-alpha lib(std) planning
+4. Build first OSDev command pack
+5. Move toward a Sentinel OS prototype
 ```
 
-Correctness comes before magic.
+Core correctness comes before libraries.
 
-Scopes come before libraries.
+Libraries come before larger OS experiments.
 
-Libraries come before desktop apps.
+Sentinel stays OSDev-first.
