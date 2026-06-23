@@ -1,161 +1,616 @@
 # Sentinel Lang Test Report
 
-> Test status for Sentinel Lang `v0.3-alpha`.
-
-This document tracks compiler stress tests, semantic diagnostics, language feature checks, and known limitations.
+**Version:** `v0.4-alpha-stable`  
+**Status:** Passed current alpha-stable validation  
+**Main target:** `x64`  
+**Main focus:** `lib(std)` OSDev helper pack + semantic stability
 
 ---
 
 ## Summary
 
-| Field | Value |
-| :--- | :--- |
-| **Version** | `v0.3-alpha` |
-| **Main target** | `x64` |
-| **Secondary target** | `x16` boot-sector experiments |
-| **Main mode** | `type(console)` |
-| **Output** | NASM / flat binary |
-| **Test focus** | Compiler core hardening and semantic diagnostics |
+Sentinel `v0.4-alpha-stable` passed the current compiler and language validation set.
+
+This release builds on the `v0.3-alpha` core hardening milestone and adds the first working built-in OSDev helper library:
+
+```sl
+lib(std)
+```
+
+The goal of this test report is to record:
+
+- parser stability
+- semantic diagnostics
+- function and storage validation
+- x64 register preservation
+- `lib(std)` command validation
+- port I/O command generation
+- IRQ helper generation
+- large valid stress-test compilation
 
 ---
 
-## v0.3-alpha Result
+## Current Result
 
-Sentinel `v0.3-alpha` focuses on hardening the compiler core.
+| Area | Result |
+| :--- | :--- |
+| **Lexer** | Passed |
+| **Parser** | Passed |
+| **AST generation** | Passed |
+| **Semantic analyzer** | Passed |
+| **Code generation** | Passed |
+| **NASM assembly output** | Passed |
+| **Flat binary pipeline** | Passed |
+| **x64 console mode** | Passed |
+| **v0.3 core hardening tests** | Passed |
+| **v0.4 std tests** | Passed |
 
-Main result:
+Current status:
 
 ```text
-Invalid Sentinel should fail before NASM.
-Valid ordered flat-storage programs should still compile.
+Sentinel v0.4-alpha-stable code core is ready.
 ```
 
 ---
 
-## Passed Feature Groups
+## v0.3-alpha Regression Status
 
-| Feature Group | Status |
+`v0.4-alpha-stable` keeps the important `v0.3-alpha` hardening behavior.
+
+| Feature | Result |
 | :--- | :--- |
-| Lexer | Passed |
-| Parser | Passed |
-| AST generation | Passed |
-| Semantic analyzer | Passed |
-| NASM codegen | Passed |
-| Optimizer pass | Passed |
-| x64 flat binary output | Passed |
-| x16 boot-sector style output | Passed |
-| Variables / flat storage | Passed |
-| `redo` mutation | Passed |
-| `if` statements | Passed |
-| Nested branches | Passed |
-| `while` loops | Passed |
-| `repeat` loops | Passed |
-| Functions | Passed |
-| Function arguments | Passed |
-| Function step calls | Passed |
-| Function result access | Passed |
-| Arrays | Passed |
-| Array indexing | Passed |
-| Variable array indexing | Passed |
-| Console output | Passed |
-| Low-code byte emission | Passed |
-| Selected low-code commands | Passed |
+| Flat storage validation | Passed |
+| Duplicate storage detection | Passed |
+| Unknown storage mutation detection | Passed |
+| Function declaration validation | Passed |
+| Function step validation | Passed |
+| Function argument count validation | Passed |
+| Unsafe parameterized step-call protection | Passed |
+| x64 `rsi` print preservation | Passed |
 
 ---
 
 ## Semantic Diagnostics Tests
 
-| Test | Expected | Result |
+| Code | Purpose | Result |
 | :--- | :--- | :--- |
-| Unknown function | `S009` | Passed |
-| Missing function step | `S012` | Passed |
-| Duplicate storage | `S003` | Passed |
-| Unknown storage mutation | `S008` | Passed |
-| `local` inside function | `S011` | Passed |
-| Parameter/storage collision | `S005` | Passed |
-| Wrong argument count | `S017` | Passed |
-| Mixed step selector and args | `S016` | Passed |
-| Step-call parameterized function | `S020` | Passed |
-| Missing `get result(...)` step | `S012` | Passed |
+| `S001` | Reserved keyword used as name | Passed |
+| `S002` | Duplicate function | Passed |
+| `S003` | Duplicate storage | Passed |
+| `S004` | Duplicate parameter | Passed |
+| `S005` | Parameter conflicts with storage | Passed |
+| `S007` | Cannot redo parameter directly | Passed |
+| `S008` | Cannot modify unknown storage | Passed |
+| `S009` | Unknown function | Passed |
+| `S010` | Recursive call unsupported | Passed |
+| `S011` | `local` inside function blocked | Passed |
+| `S012` | Missing function step | Passed |
+| `S013` | Invalid redo target | Passed |
+| `S014` | Storage conflicts with function | Passed |
+| `S015` | Unknown storage symbol | Passed |
+| `S016` | Mixed step selectors and arguments | Passed |
+| `S017` | Wrong argument count | Passed |
+| `S018` | Duplicate function step | Passed |
+| `S019` | FREERAM unknown storage | Passed |
+| `S020` | Unsafe step-call on parameterized function | Passed |
+| `S021` | Unknown library | Passed |
+| `S022` | std command/expression without `lib(std)` | Passed |
+| `S023` | Unknown std command | Available / defensive |
+| `S024` | Wrong std command argument count | Passed |
+| `S025` | Reserved / legacy dynamic port restriction | Reserved |
+| `S026` | `lib(std)` outside x64 | Passed |
 
 ---
 
-## Core Hardening Tests
+## v0.4-alpha-stable std Commands
 
-| Test | Purpose | Result |
+Current `lib(std)` command set:
+
+| Command | Kind | Result |
 | :--- | :--- | :--- |
-| Register Clobber Test | Ensures generated print does not destroy `rsi` function argument | Passed |
-| Double Print Register Test | Ensures repeated print calls preserve argument state | Passed |
-| Six Argument Test | Verifies x64 argument passing through `rdi/rsi/rdx/rcx/r8/r9` | Passed |
-| Core Hardening Beast v0.3.1 | Large flat-storage, ABI, arrays, loops, functions, and result stress test | Passed |
+| `vga_print(value)` | statement | Passed |
+| `vga_clear()` | statement | Passed |
+| `nop()` | statement | Passed |
+| `halt()` | statement | Passed |
+| `io_wait()` | statement | Passed |
+| `read_port(port)` | expression | Passed |
+| `write_port(port, value)` | statement | Passed |
+| `pic_eoi()` | statement | Passed |
+| `irq_disable()` | statement | Passed |
+| `irq_enable()` | statement | Passed |
 
 ---
 
-## Legacy Stress Tests
+## std Smoke Test
 
-| Test | Purpose | Result |
-| :--- | :--- | :--- |
-| Hello x64 | Basic compile/output | Passed |
-| Repeat Test | `repeat()` loop handling | Passed |
-| While Test | `while` loop handling | Passed |
-| Nested If Test | Nested control flow | Passed |
-| Function Test | `create` / `start` | Passed |
-| Function Args Test | x64 function arguments | Passed |
-| Result Test | `get ... result()` | Passed |
-| Array Test | Array declaration | Passed |
-| Array Index Test | Array indexing | Passed |
-| Low-Code Test | `low-code` with `emit` | Passed |
-| Try/Catch Syntax Test | `try/catch` parsing | Passed |
-| Beast Test | Medium stress program | Passed |
-| Ultra Beast Test | Large stress program | Passed |
-| Turtle Test | Small correctness test | Passed |
-| Turtle Abomination | Heavy control-flow stress | Passed |
-| Semantic Killer | Invalid semantic cases | Passed |
-
----
-
-## Important v0.3-alpha Fixes
-
-### Semantic Errors Before NASM
-
-Before `v0.3-alpha`, some invalid programs could fail at NASM stage.
-
-`v0.3-alpha` adds Sentinel-level semantic diagnostics for known bad patterns.
-
-Example:
-
-```sl
-create boot()
-    (1) console_print("boot")
-
-start boot(9)
-```
-
-Now fails as:
+Test purpose:
 
 ```text
-[SEMANTIC S012] Function `boot` has no step `(9)`.
+Verify that lib(std) loads and basic std commands compile.
+```
+
+Source pattern:
+
+```sl
+lib(std)
+x64
+type(console)
+
+vga_print("std online")
+nop()
+halt()
+```
+
+Expected behavior:
+
+- `lib(std)` is accepted.
+- `vga_print()` emits VGA print sequence.
+- `nop()` emits `nop`.
+- `halt()` emits safe halt loop.
+
+Result:
+
+```text
+Passed
 ```
 
 ---
 
-### Register Preservation
+## std VGA Test
 
-A register clobber issue was found around generated print calls.
+Test purpose:
 
-Problem shape:
-
-```sl
-create test(a, b)
-    (1) console_print("before")
-    (2) redo: out to a + b
+```text
+Verify vga_print and vga_clear.
 ```
 
-On `x64`, the second argument is passed through `rsi`.
+Source pattern:
 
-Generated print calls now preserve `rsi` around `console_print`.
+```sl
+lib(std)
+x64
+type(console)
 
-Expected ASM shape:
+vga_clear()
+vga_print("screen reset")
+halt()
+```
+
+Expected generated behavior:
+
+- VGA memory clear sequence is emitted.
+- Cursor state is reset.
+- String printing preserves `rsi`.
+
+Result:
+
+```text
+Passed
+```
+
+---
+
+## std IRQ Test
+
+Test purpose:
+
+```text
+Verify irq_disable, irq_enable, and pic_eoi.
+```
+
+Source pattern:
+
+```sl
+lib(std)
+x64
+type(console)
+
+vga_print("irq test begin")
+irq_disable()
+nop()
+irq_enable()
+pic_eoi()
+vga_print("irq test done")
+halt()
+```
+
+Expected generated behavior:
+
+```asm
+cli
+nop
+sti
+mov dx, 0x20
+mov al, 0x20
+out dx, al
+```
+
+Result:
+
+```text
+Passed
+```
+
+---
+
+## read_port Test
+
+Test purpose:
+
+```text
+Verify read_port works as an expression.
+```
+
+Source pattern:
+
+```sl
+lib(std)
+x64
+type(console)
+
+local key = read_port(0x60)
+
+vga_print("read port ok")
+halt()
+```
+
+Expected generated behavior:
+
+```asm
+push rdx
+mov  rax, 96
+mov  dx, ax
+in   al, dx
+movzx rax, al
+pop  rdx
+mov  [sl_var_key], rax
+```
+
+Result:
+
+```text
+Passed
+```
+
+---
+
+## read_port Inside Function Test
+
+Test purpose:
+
+```text
+Verify read_port works inside function bodies and with storage port values.
+```
+
+Source pattern:
+
+```sl
+lib(std)
+x64
+type(console)
+
+local keyboard_port = 0x60
+local keyboard_value = 0
+
+create keyboard_poll()
+    (1) vga_print("keyboard poll")
+    (2) redo: keyboard_value to read_port(keyboard_port)
+    (3) vga_print("keyboard read ok")
+
+start keyboard_poll()
+
+halt()
+```
+
+Expected behavior:
+
+- Function compiles.
+- `vga_print()` preserves `rsi`.
+- `read_port()` preserves `rdx`.
+- `keyboard_value` receives `rax`.
+
+Result:
+
+```text
+Passed
+```
+
+---
+
+## write_port Literal Test
+
+Test purpose:
+
+```text
+Verify write_port works with literal port/value arguments.
+```
+
+Source pattern:
+
+```sl
+lib(std)
+x64
+type(console)
+
+write_port(0x20, 0x20)
+halt()
+```
+
+Expected generated behavior:
+
+```asm
+mov dx, 0x20
+mov al, 0x20
+out dx, al
+```
+
+Result:
+
+```text
+Passed
+```
+
+---
+
+## write_port Dynamic Test
+
+Test purpose:
+
+```text
+Verify write_port works with storage expressions.
+```
+
+Source pattern:
+
+```sl
+lib(std)
+x64
+type(console)
+
+local pic_port = 0x20
+local pic_value = 0x20
+
+vga_print("write dynamic begin")
+write_port(pic_port, pic_value)
+vga_print("write dynamic ok")
+halt()
+```
+
+Expected generated behavior:
+
+```asm
+mov  rax, [sl_var_pic_port]
+mov  r10, rax
+mov  rax, [sl_var_pic_value]
+mov  r11, rax
+mov  dx, r10w
+mov  al, r11b
+out  dx, al
+```
+
+Result:
+
+```text
+Passed
+```
+
+---
+
+## write_port Function Argument Test
+
+Test purpose:
+
+```text
+Verify write_port works with function arguments.
+```
+
+Source pattern:
+
+```sl
+lib(std)
+x64
+type(console)
+
+local port_value = 0x20
+local eoi_value = 0x20
+
+create send_eoi(port_arg, value_arg)
+    (1) vga_print("send eoi begin")
+    (2) write_port(port_arg, value_arg)
+    (3) vga_print("send eoi done")
+
+start send_eoi(port_value, eoi_value)
+
+halt()
+```
+
+Expected behavior:
+
+- `port_arg` maps through `rdi`.
+- `value_arg` maps through `rsi`.
+- `vga_print()` preserves `rsi`.
+- `write_port()` emits `out dx, al`.
+
+Result:
+
+```text
+Passed
+```
+
+---
+
+## std Big Stress Test
+
+Test purpose:
+
+```text
+Verify all v0.4 std commands work together in one valid program.
+```
+
+Covered features:
+
+- `lib(std)`
+- `vga_clear()`
+- `vga_print()`
+- `nop()`
+- `io_wait()`
+- `read_port()`
+- `write_port()`
+- `pic_eoi()`
+- `irq_disable()`
+- `irq_enable()`
+- function calls
+- function arguments
+- safe no-parameter step calls
+- flat storage mutation
+- `halt()`
+
+Result:
+
+```text
+Passed
+```
+
+Conclusion:
+
+```text
+The v0.4 std command pack passed combined stress validation.
+```
+
+---
+
+## Error Test: Unknown Library
+
+Source pattern:
+
+```sl
+lib(kernel)
+x64
+type(console)
+
+halt()
+```
+
+Expected:
+
+```text
+[SEMANTIC S021] Unknown library `kernel`.
+```
+
+Result:
+
+```text
+Passed
+```
+
+---
+
+## Error Test: std Command Without lib(std)
+
+Source pattern:
+
+```sl
+x64
+type(console)
+
+halt()
+```
+
+Expected:
+
+```text
+[SEMANTIC S022] Cannot use std command `halt` without `lib(std)`.
+```
+
+Result:
+
+```text
+Passed
+```
+
+---
+
+## Error Test: read_port Without lib(std)
+
+Source pattern:
+
+```sl
+x64
+type(console)
+
+local key = read_port(0x60)
+```
+
+Expected:
+
+```text
+[SEMANTIC S022] Cannot use std expression `read_port` without `lib(std)`.
+```
+
+Result:
+
+```text
+Passed
+```
+
+---
+
+## Error Test: Wrong std Argument Count
+
+Source pattern:
+
+```sl
+lib(std)
+x64
+type(console)
+
+irq_enable(1)
+```
+
+Expected:
+
+```text
+[SEMANTIC S024] `irq_enable` expects 0 argument(s), got 1.
+```
+
+Result:
+
+```text
+Passed
+```
+
+---
+
+## Error Test: lib(std) Outside x64
+
+Source pattern:
+
+```sl
+lib(std)
+x16
+
+halt()
+```
+
+Expected:
+
+```text
+[SEMANTIC S026] `lib(std)` currently supports x64 mode only in v0.4-alpha.
+```
+
+Result:
+
+```text
+Passed
+```
+
+---
+
+## Register Preservation Notes
+
+`v0.4-alpha-stable` keeps the important `v0.3-alpha` register preservation fix.
+
+String printing preserves `rsi`:
 
 ```asm
 push rsi
@@ -164,72 +619,59 @@ call sl_print_str
 pop  rsi
 ```
 
+This prevents generated print calls from destroying the second function argument.
+
+`read_port()` preserves `rdx`.
+
+`write_port()` preserves internal helper registers used by its generated sequence.
+
 ---
 
-### Unsafe Step Calls
+## Known Test Limitations
 
-Parameterized functions cannot be called through step labels.
+| Area | Limitation |
+| :--- | :--- |
+| Runtime hardware behavior | Not fully validated on every real machine |
+| std x16/x32 | Intentionally rejected |
+| Networking | Not implemented |
+| Full driver stack | Not implemented |
+| Type safety | Incomplete |
+| Memory safety | Incomplete |
+| Exception runtime | Not implemented |
 
-Invalid:
+---
 
-```sl
-create add(a, b)
-    (1) console_print("add")
-    (2) redo: out to a + b
+## Final Test Status
 
-start add(2)
-```
-
-Now fails as:
+Current validated milestone:
 
 ```text
-[SEMANTIC S020] Cannot step-call function `add` because it has parameters.
+Sentinel v0.4-alpha-stable
 ```
 
----
-
-## Current Test Confidence
-
-| Area | Confidence |
-| :--- | :--- |
-| Small programs | High |
-| Medium programs | High |
-| Large ordered flat-storage programs | Medium-High |
-| Semantic diagnostics | High |
-| x64 codegen | Medium-High |
-| x16 boot-sector experiments | Medium |
-| Runtime semantics | Medium |
-| Result semantics | Medium-Low |
-| Type checking | Low |
-| Memory safety | Low |
-
----
-
-## Next Test Targets
-
-| Target | Purpose |
-| :--- | :--- |
-| `lib(std)` command tests | Prepare `v0.4-alpha` OSDev command pack |
-| Port I/O tests | Validate future `read_port` / `write_port` |
-| Panic/halt tests | Validate basic kernel control helpers |
-| Keyboard input smoke tests | Prepare driver-level experiments |
-| More x16 boot tests | Harden boot-sector generation |
-| More result tests | Stabilize `get result()` behavior |
-| Bounds diagnostics | Document or detect unsafe array access |
-| String behavior tests | Confirm unsupported string comparison |
-
----
-
-## Final Notes
-
-Sentinel Lang `v0.3-alpha` hardens the compiler core.
-
-The compiler can now reject several invalid semantic patterns before NASM and still compile large valid ordered flat-storage programs.
-
-Current priority:
+Result:
 
 ```text
-Core hardening before libraries.
-Semantic diagnostics before magic.
-v0.4-alpha begins the first OSDev command library work.
+PASSED
 ```
+
+Summary:
+
+```text
+v0.3-alpha hardened the compiler core.
+v0.4-alpha-stable adds the first working lib(std) OSDev helper pack.
+```
+
+The compiler now supports both:
+
+```text
+core language stability
+```
+
+and:
+
+```text
+early hardware-oriented std commands
+```
+
+This makes `v0.4-alpha-stable` the first Sentinel version where the language begins moving from pure compiler core toward practical OSDev helper tooling.
