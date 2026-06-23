@@ -12,59 +12,66 @@ It is designed as a practical middle ground between readable high-level syntax a
 
 | Field | Value |
 | :--- | :--- |
-| **Version** | `v0.3-alpha` |
+| **Version** | `v0.4-alpha-stable` |
 | **Main target** | `x64` |
 | **Output** | NASM assembly / flat binary |
 | **Compiler backend** | Private |
 | **Project type** | Experimental systems language |
 | **Main focus** | OSDev / kernel experiments |
-| **Stability** | Alpha |
+| **Stability** | Alpha stable milestone |
 
 ---
 
-## v0.3-alpha Core Hardening
+## v0.4-alpha-stable Overview
 
-Sentinel `v0.3-alpha` focuses on compiler core stability.
+Sentinel `v0.4-alpha-stable` introduces the first built-in OSDev helper library:
 
-This release hardens the language core before larger OSDev libraries are added.
+```sl
+lib(std)
+```
+
+This release builds on the `v0.3-alpha` compiler hardening work and adds a small, direct, hardware-oriented standard command pack.
+
+The goal is not to create a huge standard library yet.
+
+The goal is simple:
+
+```text
+Give Sentinel its first clean OSDev helper layer.
+Keep generated code explicit.
+Keep broken programs rejected before NASM.
+```
 
 Key improvements:
 
 | Area | Status |
 | :--- | :--- |
-| **Semantic diagnostics** | Working |
-| **Flat storage validation** | Working |
-| **Function step validation** | Working |
-| **Argument count validation** | Working |
-| **Unsafe step-call protection** | Working |
-| **x64 register preservation fixes** | Working |
-| **Large core hardening tests** | Passed |
-
-`v0.3-alpha` does not introduce large standard libraries yet.
-
-The goal is simple:
-
-```text
-Reject broken Sentinel before NASM.
-Keep valid low-level programs compiling.
-Make the core harder to break.
-```
+| **Library declaration syntax** | Working |
+| **`lib(std)` support** | Working |
+| **std command parsing** | Working |
+| **std semantic validation** | Working |
+| **std x64 codegen** | Working |
+| **Port I/O helpers** | Working |
+| **VGA helpers** | Working |
+| **IRQ helpers** | Working |
+| **x64-only std guard** | Working |
+| **Large std stress tests** | Passed |
 
 ---
+
 ## What Sentinel Is
 
-Sentinel is an OSDev-first low-level language focused on bootloaders, kernels, flat binaries, and direct NASM-oriented output.
+Sentinel is a low-level experimental language focused on operating system development.
 
-It is designed to make low-level code easier to write without hiding the machine.
+It is not a general-purpose scripting language and it is not trying to hide the hardware.
+
+Instead, it provides a simpler syntax over low-level concepts while still producing explicit NASM output.
 
 ```text
-Readable Sentinel source
+Readable source code
         │
         ▼
 Compiler pipeline
-        │
-        ▼
-Semantic checks
         │
         ▼
 NASM assembly
@@ -72,6 +79,8 @@ NASM assembly
         ▼
 Flat binary
 ```
+
+Sentinel is designed for people who want low-level control without writing every boot/kernel experiment directly in raw assembly.
 
 ---
 
@@ -83,9 +92,10 @@ Sentinel is currently not:
 | :--- | :--- |
 | **Production language** | Still alpha |
 | **C/Rust replacement** | Core semantics are still evolving |
-| **Complete OS framework** | OS libraries are planned later |
+| **Complete OS framework** | OS libraries are still early |
 | **Safe language yet** | Type checking and memory safety are incomplete |
 | **Full inline ASM system** | `low-code` is currently limited |
+| **Desktop app framework** | Future work |
 | **Public compiler backend** | Compiler source is private for now |
 
 ---
@@ -120,8 +130,9 @@ NASM Assembly
 Short version:
 
 ```text
-.sl -> Lexer -> Parser -> AST -> Semantic Analyzer -> NASM -> .bin
+.sl  ->  Lexer  ->  Parser  ->  AST  ->  Semantics  ->  NASM  ->  .bin
 ```
+
 ---
 
 ## Architecture Modes
@@ -138,9 +149,15 @@ Current strongest path:
 x64 + type(console)
 ```
 
+Current `lib(std)` rule:
+
+```text
+lib(std) is x64-only in v0.4-alpha-stable.
+```
+
 ---
 
-## v0.3-alpha Feature Matrix
+## v0.4-alpha-stable Feature Matrix
 
 | Feature | Status | Notes |
 | :--- | :--- | :--- |
@@ -148,7 +165,7 @@ x64 + type(console)
 | **Parser** | Working | Builds AST |
 | **AST** | Working | Internal program representation |
 | **Semantic analyzer** | Working | Catches invalid Sentinel before NASM |
-| **NASM codegen** | Working | Generates x64 NASM output |
+| **NASM codegen** | Working | Generates NASM output |
 | **Flat binary pipeline** | Working | Uses NASM `-f bin` |
 | **x64 mode** | Working | Main tested mode |
 | **x16 boot sector output** | Working | Can generate boot-sector style binaries |
@@ -170,48 +187,127 @@ x64 + type(console)
 | **low-code** | Working | `emit` and selected low-level commands |
 | **try/catch** | Syntax-only | No real exception runtime yet |
 | **FREERAM** | Experimental | Currently clears variable storage |
+| **lib(std)** | Working | First x64 OSDev helper pack |
+| **read_port()** | Working | std expression |
+| **write_port()** | Working | std statement with expression args |
+| **pic_eoi()** | Working | Sends EOI to master PIC |
+| **irq_disable/enable** | Working | Emits `cli` / `sti` |
+| **vga_print/vga_clear** | Working | std VGA helpers |
 
 ---
 
-## Example
+## lib(std)
+
+`v0.4-alpha-stable` adds the first built-in standard OSDev command pack:
 
 ```sl
+lib(std)
+```
+
+Example:
+
+```sl
+lib(std)
 x64
 type(console)
 
-local x = 10
-local y = 5
-local sum = 0
+vga_print("std online")
+halt()
+```
 
-create add(a, b)
-    (1) redo: sum to a + b
-    (2) console_print("add done")
+`lib(std)` is currently x64-only.
 
-start add(x, y)
+Invalid:
 
-if sum > 10 then
-    console_print("result ok")
-end
+```sl
+lib(std)
+x16
+
+halt()
+```
+
+This fails with semantic error `S026`.
+
+---
+
+## std Commands
+
+Current `lib(std)` commands:
+
+| Command | Kind | Description |
+| :--- | :--- | :--- |
+| `vga_print(value)` | statement | Prints through VGA console output |
+| `vga_clear()` | statement | Clears VGA text buffer |
+| `nop()` | statement | Emits `nop` |
+| `halt()` | statement | Emits safe halt loop |
+| `io_wait()` | statement | Emits classic port `0x80` wait |
+| `read_port(port)` | expression | Reads byte from I/O port |
+| `write_port(port, value)` | statement | Writes byte to I/O port |
+| `pic_eoi()` | statement | Sends EOI to master PIC |
+| `irq_disable()` | statement | Emits `cli` |
+| `irq_enable()` | statement | Emits `sti` |
+
+---
+
+## std Example
+
+```sl
+lib(std)
+x64
+type(console)
+
+local pic_port = 0x20
+local pic_value = 0x20
+
+local keyboard_port = 0x60
+local keyboard_value = 0
+
+create keyboard_poll()
+    (1) vga_print("keyboard poll")
+    (2) redo: keyboard_value to read_port(keyboard_port)
+    (3) write_port(pic_port, pic_value)
+    (4) pic_eoi()
+    (5) vga_print("keyboard done")
+
+vga_clear()
+vga_print("std begin")
+
+irq_disable()
+start keyboard_poll()
+irq_enable()
+
+vga_print("std done")
+halt()
 ```
 
 ---
 
-## Generated NASM Style
+## Port I/O
 
-Sentinel generates NASM-style output:
+Sentinel can now express basic port I/O through `lib(std)`.
 
-```asm
-mov  rax, [sl_var_x]
-mov  rdi, rax
+Read from port:
 
-mov  rax, [sl_var_y]
-mov  rsi, rax
-
-call sl_func_add
-mov  [sl_var_math_result], rax
+```sl
+local key = read_port(0x60)
 ```
 
-Generated binaries are intentionally low-level and explicit.
+Write to port:
+
+```sl
+write_port(0x20, 0x20)
+```
+
+Write using storage:
+
+```sl
+local port = 0x20
+local value = 0x20
+
+write_port(port, value)
+```
+
+This generates direct x64 NASM-style port I/O.
 
 ---
 
@@ -221,15 +317,59 @@ One unique Sentinel idea is numbered function stages.
 
 ```sl
 create boot_sequence()
-    (1) console_print("boot: cpu")
-    (2) console_print("boot: memory")
-    (3) console_print("boot: drivers")
-    (4) console_print("boot: done")
+    (1) vga_print("boot: cpu")
+    (2) vga_print("boot: memory")
+    (3) vga_print("boot: drivers")
+    (4) vga_print("boot: done")
 
 start boot_sequence()
 ```
 
 This is useful for OSDev-style debugging where each stage of initialization matters.
+
+Safe no-parameter step calls are supported:
+
+```sl
+start boot_sequence(2)
+```
+
+Parameterized function step calls are blocked because step labels do not prepare argument registers.
+
+---
+
+## Flat Storage Model
+
+Sentinel currently uses flat source-file storage.
+
+```sl
+local counter = 0
+redo: counter to counter + 1
+```
+
+Important rule:
+
+```text
+local = flat storage declaration
+redo  = mutation of existing storage
+```
+
+In `v0.4-alpha-stable`, function-local `local` declarations are still rejected.
+
+Correct pattern:
+
+```sl
+local result = 0
+
+create add(a, b)
+    (1) redo: result to a + b
+```
+
+Invalid:
+
+```sl
+create add(a, b)
+    (1) local result = a + b
+```
 
 ---
 
@@ -254,13 +394,38 @@ db 0x90
 
 Current rule:
 
-> `low-code` supports `emit` and selected low-level commands. Full arbitrary inline assembly is backend-dependent and not stable yet.
+> `low-code` supports emit-based byte output and selected low-level commands. Full raw inline assembly is not stable yet.
+
+---
+
+## Semantic Diagnostics
+
+Sentinel rejects many invalid programs before NASM.
+
+Examples:
+
+```text
+[SEMANTIC S009] Unknown function
+[SEMANTIC S012] Function has no requested step
+[SEMANTIC S017] Wrong argument count
+[SEMANTIC S020] Unsafe parameterized step-call
+[SEMANTIC S021] Unknown library
+[SEMANTIC S022] std command used without lib(std)
+[SEMANTIC S024] Wrong std command argument count
+[SEMANTIC S026] lib(std) used outside supported mode
+```
+
+The goal is:
+
+```text
+Broken Sentinel should fail as Sentinel, not as NASM.
+```
 
 ---
 
 ## Stress Tests
 
-Sentinel `v0.3-alpha` has survived multiple compiler stress tests and semantic hardening checks.
+Sentinel `v0.4-alpha-stable` has survived multiple compiler stress tests and semantic hardening checks.
 
 | Test | Purpose | Result |
 | :--- | :--- | :--- |
@@ -275,7 +440,9 @@ Sentinel `v0.3-alpha` has survived multiple compiler stress tests and semantic h
 | **Turtle Abomination** | heavy control-flow stress | Passed |
 | **Semantic Killer** | invalid semantic cases | Passed |
 | **Register Clobber Test** | verifies print does not destroy function arguments | Passed |
-| **Core Hardening Beast v0.3.1** | large flat-storage and ABI hardening stress test | Passed |
+| **Core Hardening Beast v0.3** | flat-storage and ABI hardening stress test | Passed |
+| **std Stress Test v0.4** | `lib(std)` commands, ports, IRQ helpers | Passed |
+| **std Error Tests v0.4** | `S021`, `S022`, `S024`, `S026` | Passed |
 
 ---
 
@@ -283,92 +450,52 @@ Sentinel `v0.3-alpha` has survived multiple compiler stress tests and semantic h
 
 | Area | Current Limitation |
 | :--- | :--- |
-| **Standard libraries** | Large libraries are not included yet |
+| **lib(std)** | x64-only in v0.4-alpha-stable |
+| **Type system** | Type checking is incomplete |
+| **Memory safety** | Not implemented yet |
 | **Return values** | No explicit `return` keyword yet |
-| **Result access** | `get result()` still depends on generated `rax` value |
+| **Result access** | `get result()` depends on generated `rax` value |
 | **Strings** | No real string comparison yet |
 | **Arrays** | No bounds checking yet |
 | **Exceptions** | `try/catch` is syntax-only |
-| **Type system** | Type checking is incomplete |
-| **Inline ASM** | Full arbitrary inline ASM is not stable yet |
-| **Memory safety** | Memory safety is not implemented yet |
-| **Networking** | No network stack yet |
-| **Filesystem** | No filesystem layer yet |
+| **Structs** | Parsed / experimental |
+| **Inline ASM** | Only `emit` and selected low-level commands are stable |
+| **Networking** | Not implemented yet |
+| **Self-hosting** | Long-term goal |
 
 ---
 
-## Important v0.3-alpha Fix
+## Important v0.4-alpha-stable Fix
 
-Sentinel `v0.3-alpha` adds semantic diagnostics before NASM code generation.
-
-The compiler now rejects known invalid semantic patterns earlier, with readable Sentinel-level errors.
+`v0.4-alpha-stable` adds the first working `lib(std)` OSDev helper layer.
 
 Example:
 
 ```sl
-local a = 10
+lib(std)
+x64
+type(console)
 
-create test(a)
-    (1) console_print("bad")
+local key = read_port(0x60)
+
+vga_print("read ok")
+halt()
 ```
 
-This now fails before NASM:
+Generated style:
 
-```text
-[SEMANTIC S005] Parameter `a` conflicts with storage declared on line 1.
+```asm
+push rdx
+mov  rax, 96
+mov  dx, ax
+in   al, dx
+movzx rax, al
+pop  rdx
+mov  [sl_var_key], rax
 ```
 
-Another example:
+This gives Sentinel a clean way to talk to hardware ports without writing raw assembly in every program.
 
-```sl
-create boot()
-    (1) console_print("boot")
-
-start boot(9)
-```
-
-This now fails before NASM:
-
-```text
-[SEMANTIC S012] Function `boot` has no step `(9)`.
-```
-
-The goal of `v0.3-alpha` is not a classical scope system.
-
-Sentinel uses flat storage discipline:
-
-```text
-local = flat storage declaration
-redo  = mutation of existing storage
-```
-
-Broken Sentinel should fail as Sentinel, not as NASM.
-
----
-## Flat Storage Model
-
-Sentinel does not use classical lexical scopes in `v0.3-alpha`.
-
-Storage is flat and explicit.
-
-| Source Concept | Meaning |
-| :--- | :--- |
-| **Top-level `local`** | Declares flat storage |
-| **`redo`** | Mutates existing storage |
-| **Function parameter** | Temporary input name passed through registers |
-| **Function step** | Numbered compiler-visible function stage |
-| **Function storage** | Use top-level storage and mutate with `redo` |
-
-Recommended style:
-
-```sl
-local result = 0
-
-create add(a, b)
-    (1) redo: result to a + b
-
-start add(x, y)
-```
 ---
 
 ## Project Direction
@@ -392,16 +519,16 @@ v0.3-alpha
 core hardening + semantic diagnostics
     │
     ▼
-v0.4-alpha
+v0.4-alpha-stable
     │
     ▼
-kernel-oriented helpers
+first lib(std) OSDev command pack
     │
     ▼
 v0.5-alpha
     │
     ▼
-first demo OS prototype
+demo kernel / mini OS + documentation site
     │
     ▼
 v1.0
@@ -418,13 +545,14 @@ stable OSDev language core
 | :--- | :--- |
 | **v0.2-alpha** | Working x64 compiler core |
 | **v0.3-alpha** | Core hardening and semantic diagnostics |
-| **v0.4-alpha** | First `lib(std)` OSDev command pack |
-| **v0.5-alpha** | Demo kernel / mini OS |
+| **v0.4-alpha-stable** | First `lib(std)` OSDev command pack |
+| **v0.5-alpha** | Demo kernel / mini OS and GitHub Pages documentation site |
 | **v0.6-alpha** | Runtime and low-level library expansion |
 | **v0.7-alpha** | Driver and hardware helper experiments |
 | **v0.8-alpha** | Host tooling research |
 | **v0.9-beta** | Testing and documentation hardening |
 | **v1.0** | Stable experimental OSDev language |
+
 ---
 
 ## Repository Structure
@@ -445,10 +573,13 @@ LICENSE           Project license
 | Use Case | Status |
 | :--- | :--- |
 | **x64 kernel experiments** | Good target |
-| **Bootloader research** | Planned / experimental |
+| **Bootloader research** | Working / experimental |
 | **VGA text output** | Working |
+| **Basic port I/O** | Working through `lib(std)` |
+| **IRQ/PIC experiments** | Early support through `pic_eoi()` |
 | **OSDev learning** | Good target |
 | **Driver experiments** | Future |
+| **Networking** | Future |
 | **Desktop applications** | Future |
 | **Self-hosting** | Long-term goal |
 
@@ -472,4 +603,4 @@ It is designed as an OSDev-first systems language for people who want readable l
 
 The long-term goal is to build a practical low-level language for bootloaders, kernels, drivers, and larger OSDev systems.
 
-Sentinel is still early, but the `v0.3-alpha` compiler now has a hardened experimental core with semantic diagnostics, flat storage validation, safer function step rules, x64 register preservation fixes, and successful large stress-test compilation.
+Sentinel is still early, but the `v0.4-alpha-stable` compiler now has a hardened experimental core, semantic diagnostics, flat storage validation, safer function step rules, x64 register preservation fixes, and the first working `lib(std)` OSDev helper pack.
