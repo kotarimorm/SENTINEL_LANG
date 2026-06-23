@@ -1,88 +1,123 @@
 # Sentinel Lang Status
 
-> Current development status for Sentinel Lang.
+**Current version:** `v0.4-alpha-stable`  
+**Current phase:** First OSDev std helper pack  
+**Main target:** `x64`  
+**Project status:** Experimental alpha-stable milestone
 
 ---
 
-## Current Version
+## Summary
 
-| Field | Value |
-| :--- | :--- |
-| **Version** | `v0.3-alpha` |
-| **Main target** | `x64` |
-| **Secondary target** | `x16` boot-sector experiments |
-| **Main mode** | `type(console)` |
-| **Output** | NASM assembly / flat binary |
-| **Compiler backend** | Private |
-| **Stability** | Alpha |
-| **Primary focus** | OSDev / kernel experiments |
+Sentinel Lang is an experimental low-level programming language for OSDev, bootloaders, kernels, and direct hardware-oriented code generation.
 
----
+`v0.4-alpha-stable` builds on the `v0.3-alpha` compiler hardening milestone and adds the first working built-in OSDev helper pack:
 
-## Status Summary
-
-```text
-Lexer           Working
-Parser          Working
-AST             Working
-Semantic checks Working
-x64 codegen     Working
-x16 boot output Working / experimental
-Flat binary     Working
-Optimizer       Working
-Libraries       Planned for v0.4-alpha
+```sl
+lib(std)
 ```
 
-Sentinel `v0.3-alpha` focuses on compiler core hardening.
+Current milestone result:
 
-The compiler now catches several invalid semantic patterns before NASM.
+```text
+Sentinel v0.4-alpha-stable code core is ready.
+```
 
 ---
 
-## Core Status
+## Current Core Status
 
-| Area | Status | Notes |
+| Area | Status |
+| :--- | :--- |
+| Lexer | Working |
+| Parser | Working |
+| AST | Working |
+| Semantic analyzer | Working |
+| NASM codegen | Working |
+| Optimizer | Basic / working |
+| x64 output | Working |
+| x16 boot output | Experimental / working |
+| Flat binary pipeline | Working |
+| IDE integration | Working locally |
+| Compiler backend | Private |
+
+---
+
+## Language Status
+
+| Feature | Status |
+| :--- | :--- |
+| `x16` | Experimental |
+| `x32` | Experimental |
+| `x64` | Main tested mode |
+| `type(console)` | Working |
+| `local` | Working |
+| `redo` | Working |
+| `if / then / else / end` | Working |
+| `while` | Working |
+| `repeat` | Working |
+| `create` functions | Working |
+| Numbered function steps | Working |
+| `start` full calls | Working |
+| Safe no-param step calls | Working |
+| Function arguments | Working |
+| `get ... result()` | Experimental |
+| Arrays | Working |
+| Array indexing | Working |
+| `low-code` | Working / limited |
+| `try/catch` | Syntax-only |
+| `FREERAM` | Experimental |
+| `lib(std)` | Working / x64-only |
+
+---
+
+## v0.3-alpha Hardening Status
+
+`v0.3-alpha` introduced the semantic hardening layer.
+
+Still active in `v0.4-alpha-stable`:
+
+| Hardening Area | Status |
+| :--- | :--- |
+| Duplicate storage detection | Working |
+| Unknown storage mutation detection | Working |
+| Unknown function detection | Working |
+| Missing function step detection | Working |
+| Function argument count validation | Working |
+| Parameter/storage collision detection | Working |
+| Unsafe parameterized step-call protection | Working |
+| x64 `rsi` print preservation | Working |
+
+---
+
+## v0.4-alpha-stable std Status
+
+`v0.4-alpha-stable` adds the first built-in OSDev command pack.
+
+Current std commands:
+
+| Command | Status | Notes |
 | :--- | :--- | :--- |
-| Lexer | Working | Tokenizes Sentinel source |
-| Parser | Working | Builds AST |
-| AST | Working | Internal representation |
-| Semantic analyzer | Working | Rejects invalid Sentinel before NASM |
-| x64 codegen | Working | Main tested backend |
-| x16 codegen | Experimental | Boot-sector style output works |
-| Optimizer | Working | Simple ASM-level optimization pass |
-| NASM pipeline | Working | Produces flat binaries |
-| Diagnostics | Improved | Semantic errors now include fixes |
-| Register safety | Improved | Generated print preserves `rsi` |
-| Libraries | Planned | `lib(std)` begins in `v0.4-alpha` |
+| `vga_print(value)` | Working | VGA console output helper |
+| `vga_clear()` | Working | Clears VGA text buffer |
+| `nop()` | Working | Emits `nop` |
+| `halt()` | Working | Emits safe halt loop |
+| `io_wait()` | Working | Emits port `0x80` wait |
+| `read_port(port)` | Working | Expression, returns byte in `rax` |
+| `write_port(port, value)` | Working | Statement, supports expressions |
+| `pic_eoi()` | Working | Sends EOI to master PIC |
+| `irq_disable()` | Working | Emits `cli` |
+| `irq_enable()` | Working | Emits `sti` |
+
+Current std limitation:
+
+```text
+lib(std) is x64-only in v0.4-alpha-stable.
+```
 
 ---
 
-## Working Language Features
-
-| Feature | Status | Notes |
-| :--- | :--- | :--- |
-| `x16` | Experimental | BIOS / bootloader path |
-| `x32` | Experimental | Protected-mode experiments |
-| `x64` | Working | Main tested mode |
-| `type(console)` | Working | VGA-style console output |
-| `local` | Working | Flat storage declaration |
-| `redo` | Working | Mutation of existing storage |
-| `if / then / end` | Working | Numeric conditions |
-| `while` | Working | Numeric loops |
-| `repeat` | Working | Literal and variable counts |
-| `create` functions | Working | Numbered function steps |
-| `start` calls | Working | Normal calls and safe step calls |
-| Function arguments | Working | x64 register-based |
-| `get ... result()` | Experimental | Depends on `rax` |
-| Arrays | Working | Numeric arrays |
-| Array indexing | Working | Literal and variable indexing |
-| `low-code` | Working | `emit` and selected low-level commands |
-| `try/catch` | Syntax-only | No runtime exception model |
-| `FREERAM` | Experimental | Clears variable storage |
-
----
-
-## v0.3-alpha Semantic Diagnostics
+## Current Semantic Diagnostics
 
 | Code | Meaning | Status |
 | :--- | :--- | :--- |
@@ -90,222 +125,176 @@ The compiler now catches several invalid semantic patterns before NASM.
 | `S002` | Duplicate function | Working |
 | `S003` | Duplicate storage | Working |
 | `S004` | Duplicate parameter | Working |
-| `S005` | Parameter/storage collision | Working |
-| `S007` | Cannot `redo` parameter | Working |
-| `S008` | Unknown storage mutation | Working |
+| `S005` | Parameter conflicts with storage | Working |
+| `S006` | Reserved / legacy parameter conflict slot | Reserved |
+| `S007` | Cannot redo parameter directly | Working |
+| `S008` | Cannot modify unknown storage | Working |
 | `S009` | Unknown function | Working |
 | `S010` | Recursive call unsupported | Working |
 | `S011` | `local` inside function blocked | Working |
 | `S012` | Missing function step | Working |
-| `S013` | Invalid `redo` target | Working |
-| `S014` | Storage/function collision | Working |
+| `S013` | Invalid redo target | Working |
+| `S014` | Storage conflicts with function | Working |
 | `S015` | Unknown storage symbol | Working |
-| `S016` | Mixed step selector and args | Working |
-| `S017` | Wrong function argument count | Working |
+| `S016` | Mixed step selectors and arguments | Working |
+| `S017` | Wrong argument count | Working |
 | `S018` | Duplicate function step | Working |
-| `S019` | `FREERAM` unknown storage | Working |
+| `S019` | FREERAM unknown storage | Working |
 | `S020` | Unsafe step-call on parameterized function | Working |
+| `S021` | Unknown library | Working |
+| `S022` | std command/expression without `lib(std)` | Working |
+| `S023` | Unknown std command | Defensive / available |
+| `S024` | Wrong std command argument count | Working |
+| `S025` | Reserved / legacy dynamic port restriction | Reserved |
+| `S026` | `lib(std)` outside supported mode | Working |
 
 ---
 
-## Important v0.3-alpha Fixes
+## Current Testing Status
 
-### Semantic Errors Before NASM
+| Test Group | Result |
+| :--- | :--- |
+| Basic x64 compile | Passed |
+| Function tests | Passed |
+| Loop tests | Passed |
+| Array tests | Passed |
+| Result tests | Passed |
+| Semantic error tests | Passed |
+| Register clobber tests | Passed |
+| v0.3 core hardening tests | Passed |
+| std smoke tests | Passed |
+| std port I/O tests | Passed |
+| std IRQ helper tests | Passed |
+| std big stress test | Passed |
+| std semantic error tests | Passed |
 
-Invalid Sentinel should fail as Sentinel, not as NASM.
-
-Examples now caught before codegen/NASM:
+Current test conclusion:
 
 ```text
-unknown functions
-unknown storage
-duplicate storage
-missing function steps
-wrong function argument counts
-unsafe parameterized step calls
+v0.4-alpha-stable passed current validation.
 ```
-
----
-
-### Flat Storage Discipline
-
-Sentinel does not use classical lexical scopes in `v0.3-alpha`.
-
-Current model:
-
-```text
-local = flat storage declaration
-redo  = mutation of existing storage
-params = temporary input names
-```
-
-Function-local `local` declarations are blocked for now because storage allocation inside function steps can create unsafe duplicate NASM labels.
-
-Recommended style:
-
-```sl
-local result = 0
-
-create add(a, b)
-    (1) redo: result to a + b
-
-start add(x, y)
-```
-
----
-
-### Register Preservation
-
-Generated print calls now preserve `rsi`.
-
-This prevents `console_print` from destroying the second x64 function argument.
-
-Expected generated shape:
-
-```asm
-push rsi
-lea  rsi, [rel sl_pstr_0]
-call sl_print_str
-pop  rsi
-```
-
----
-
-### Safe Step Calls
-
-Step calls are allowed for no-parameter functions:
-
-```sl
-create boot_report()
-    (1) console_print("one")
-    (2) console_print("two")
-
-start boot_report(2)
-```
-
-Step calls are blocked for parameterized functions:
-
-```sl
-create add(a, b)
-    (1) console_print("add")
-    (2) redo: result to a + b
-
-start add(2)
-```
-
-This fails with `S020`.
 
 ---
 
 ## Known Limitations
 
-| Area | Current Limitation |
+| Area | Limitation |
 | :--- | :--- |
-| Standard libraries | Planned for `v0.4-alpha` |
-| `get result()` | Still depends on `rax` |
+| `lib(std)` | x64-only |
 | Type system | Incomplete |
-| String comparison | Not stable |
-| Array bounds | Not checked |
-| Exceptions | `try/catch` is syntax-only |
 | Memory safety | Not implemented |
+| Return values | No explicit `return` keyword |
+| `get result()` | Depends on generated `rax` |
+| Strings | No real string comparison |
+| Arrays | No bounds checking |
+| Exceptions | `try/catch` is syntax-only |
+| Structs | Experimental |
+| Inline ASM | `low-code` is limited |
 | Networking | Not implemented |
-| Filesystem | Not implemented |
-| Full inline ASM | Backend-dependent / not fully stable |
+| Driver stack | Not implemented |
+| Self-hosting | Long-term goal |
 
 ---
 
-## Recommended v0.3-alpha Style
+## Recommended Current Style
 
-Use ordered flat-storage style:
+Recommended `v0.4-alpha-stable` style:
 
 ```sl
+lib(std)
 x64
 type(console)
 
-local counter = 0
-local limit = 3
+local keyboard_port = 0x60
+local keyboard_value = 0
 
-create tick()
-    (1) redo: counter to counter + 1
-    (2) console_print("tick")
+create keyboard_poll()
+    (1) vga_print("keyboard poll")
+    (2) redo: keyboard_value to read_port(keyboard_port)
+    (3) pic_eoi()
 
-repeat(limit)
-    start tick()
-end
+start keyboard_poll()
 
-if counter == 3 then
-    console_print("ok")
-end
-```
-
-Rules:
-
-| Rule | Reason |
-| :--- | :--- |
-| Declare storage with top-level `local` | Keeps flat storage explicit |
-| Mutate with `redo` | Avoids duplicate declarations |
-| Use named args for data | Keeps `start func(N)` as step selector |
-| Use step calls only on no-param functions | Avoids stale argument registers |
-| Keep functions ordered by boot stage | Improves OSDev readability |
-
----
-
-## v0.4-alpha Direction
-
-`v0.4-alpha` should begin the first OSDev command library work.
-
-Initial direction:
-
-```text
-lib(std)
-```
-
-Possible commands:
-
-```text
 halt()
-nop()
-panic(msg)
-read_port(port)
-write_port(port, value)
-io_wait()
-pic_eoi()
-vga_clear()
-vga_print(msg)
 ```
 
-`v0.4-alpha` should not try to become a full standard library.
+Core style rules:
 
-It should provide small compile-time OSDev commands that lower directly into low-level code.
+```text
+Declare storage with local.
+Mutate storage with redo.
+Use lib(std) for OSDev helpers.
+Use x64 with lib(std).
+Use step calls only for no-param functions.
+```
 
 ---
 
-## Public Repository Status
+## Next Target
 
-| Item | Status |
-| :--- | :--- |
-| README | Updating for `v0.3-alpha` |
-| Specification | Needs v0.3 semantic/ABI update |
-| Roadmap | Needs v0.3/v0.4 refresh |
-| Test report | Updated for `v0.3-alpha` |
-| Compiler source | Private |
-| Examples | Needs ordered v0.3 examples |
-| Generated ASM | Private / local testing |
+Next planned milestone:
+
+```text
+v0.5-alpha
+```
+
+Primary goals:
+
+- demo kernel / mini OS
+- GitHub Pages documentation site
+- better public examples
+- clearer getting-started guide
+- first real OSDev tutorial flow
+- expanded docs for `lib(std)`
+
+`v0.5-alpha` should focus on proving that Sentinel can be used to build a small readable OSDev prototype.
+
+---
+
+## Project Direction
+
+```text
+v0.1-alpha
+    ↓
+basic compiler foundation
+
+v0.2-alpha
+    ↓
+working x64 compiler core
+
+v0.3-alpha
+    ↓
+core hardening + semantic diagnostics
+
+v0.4-alpha-stable
+    ↓
+first lib(std) OSDev helper pack
+
+v0.5-alpha
+    ↓
+demo kernel / mini OS + documentation site
+
+v1.0
+    ↓
+stable experimental OSDev language core
+```
 
 ---
 
 ## Final Status
 
-Sentinel Lang `v0.3-alpha` is a real experimental compiler stage.
-
-It can compile large ordered flat-storage programs into NASM assembly and flat binary output.
-
-It now includes semantic diagnostics before NASM and has passed core hardening tests.
-
-Current priority:
+Sentinel `v0.4-alpha-stable` is the first version where the language has both:
 
 ```text
-Finish v0.3-alpha docs.
-Keep the core stable.
-Begin v0.4-alpha lib(std) planning.
+a hardened compiler core
 ```
+
+and:
+
+```text
+a working OSDev helper library layer
+```
+
+This makes `v0.4-alpha-stable` an important transition point.
+
+Sentinel is still alpha, but it is now moving from pure compiler core work toward practical OSDev usage.
