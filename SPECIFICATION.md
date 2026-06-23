@@ -1,12 +1,12 @@
 
 # Sentinel Lang Specification
 
-**Version:** `v0.3-alpha`  
+**Version:** `v0.4-alpha-stable`
 **Status:** Experimental alpha  
 **Main target:** OSDev / kernels / bootloaders / low-level systems code  
 **Primary backend:** NASM assembly / flat binary  
 **Compiler status:** Private experimental compiler  
-**Current focus:** Core hardening before libraries
+**Current focus:** First `lib(std)` OSDev command pack
 
 ---
 
@@ -97,7 +97,7 @@ The goal is to make OSDev faster, cleaner, and less painful.
 Current version:
 
 ```text
-v0.3-alpha
+v0.4-alpha-stable
 ```
 
 Meaning:
@@ -105,35 +105,46 @@ Meaning:
 | Part | Meaning |
 | :--- | :--- |
 | `v0` | Language is not stable yet |
-| `3` | Third alpha milestone |
-| `alpha` | Breaking changes are allowed |
+| `4` | Fourth alpha milestone |
+| `alpha-stable` | Stable alpha milestone after passed tests |
 
-`v0.3-alpha` is focused on compiler core hardening.
+`v0.4-alpha-stable` iis focused on the first built-in OSDev helper library:
 
 It does not introduce large libraries yet.
 
 ---
 
-# 5. v0.3-alpha Main Goal
+# 5. v0.4-alpha-stable Main Goal
 
-The main goal of `v0.3-alpha` is:
+The main goal of `v0.4-alpha-stable` is:
 
 ```text
-Reject broken Sentinel before NASM.
-Keep valid low-level programs compiling.
-Make the core harder to break.
+Add the first clean OSDev helper layer.
+Keep std small and explicit.
+Keep invalid std usage rejected before NASM.
 ```
 
-This version focuses on:
+This version builds on `v0.3-alpha`.
 
-- semantic diagnostics
-- flat storage validation
-- function validation
-- step validation
-- argument validation
-- unsafe step-call protection
-- x64 register preservation fixes
-- large core stress tests
+`v0.3-alpha` focused on core hardening and semantic diagnostics.
+
+`v0.4-alpha-stable` adds the first working library command pack:
+
+```sl
+lib(std)
+```
+
+This release focuses on:
+
+- library declaration parsing
+- std command parsing
+- std semantic validation
+- x64-only std protection
+- VGA helpers
+- port I/O helpers
+- IRQ helpers
+- read/write port support
+- std stress testing
 
 ---
 
@@ -346,6 +357,47 @@ type(console)
 
 console_print("hello")
 ```
+# 10.1 lib(std)
+
+Sentinel `v0.4-alpha-stable` introduces the first built-in OSDev helper library:
+
+```sl
+lib(std)
+```
+
+Example:
+
+```sl
+lib(std)
+x64
+type(console)
+
+vga_print("std online")
+halt()
+```
+
+`lib(std)` is currently x64-only.
+
+Invalid:
+
+```sl
+lib(std)
+x16
+
+halt()
+```
+
+Semantic error:
+
+```text
+[SEMANTIC S026] `lib(std)` currently supports x64 mode only in v0.4-alpha.
+```
+
+`lib(std)` is not a DLL system.
+
+It is not a runtime package manager.
+
+It is a compile-time Sentinel command pack that unlocks built-in OSDev helpers.
 
 ## 10.2 Planned Types
 
@@ -1885,6 +1937,15 @@ Current known semantic codes:
 | `S018` | Duplicate function step |
 | `S019` | FREERAM unknown storage |
 | `S020` | Unsafe step-call on parameterized function |
+| `S021` | Unknown library |
+| `S022` | std command/expression used without `lib(std)` |
+| `S023` | Unknown std command |
+| `S024` | Wrong std command argument count |
+| `S025` | Reserved / legacy dynamic port restriction |
+| `S026` | `lib(std)` used outside supported mode |
+`S025` was used during early `write_port()` hardening.
+
+In `v0.4-alpha-stable`, `write_port()` supports expression arguments, so `S025` is reserved / legacy.
 
 ---
 
@@ -2007,6 +2068,92 @@ Error:
 ```
 
 ---
+## 60.7 Unknown Library
+
+Source:
+
+```sl
+lib(kernel)
+x64
+type(console)
+
+halt()
+```
+
+Error:
+
+```text
+[SEMANTIC S021] Unknown library `kernel`.
+```
+
+## 60.8 std Command Without lib(std)
+
+Source:
+
+```sl
+x64
+type(console)
+
+halt()
+```
+
+Error:
+
+```text
+[SEMANTIC S022] Cannot use std command `halt` without `lib(std)`.
+```
+
+## 60.9 read_port Without lib(std)
+
+Source:
+
+```sl
+x64
+type(console)
+
+local key = read_port(0x60)
+```
+
+Error:
+
+```text
+[SEMANTIC S022] Cannot use std expression `read_port` without `lib(std)`.
+```
+
+## 60.10 Wrong std Argument Count
+
+Source:
+
+```sl
+lib(std)
+x64
+type(console)
+
+irq_enable(1)
+```
+
+Error:
+
+```text
+[SEMANTIC S024] `irq_enable` expects 0 argument(s), got 1.
+```
+
+## 60.11 lib(std) Outside x64
+
+Source:
+
+```sl
+lib(std)
+x16
+
+halt()
+```
+
+Error:
+
+```text
+[SEMANTIC S026] `lib(std)` currently supports x64 mode only in v0.4-alpha.
+```
 
 # 61. Valid v0.3-alpha Style
 
@@ -2245,6 +2392,69 @@ Broken Sentinel should fail as Sentinel, not as NASM.
 ```
 
 ---
+# std Commands
+
+`v0.4-alpha-stable` adds the first `lib(std)` command pack.
+
+Current std commands:
+
+| Command | Kind | Description |
+| :--- | :--- | :--- |
+| `vga_print(value)` | statement | Prints through VGA console output |
+| `vga_clear()` | statement | Clears VGA text buffer |
+| `nop()` | statement | Emits `nop` |
+| `halt()` | statement | Emits safe halt loop |
+| `io_wait()` | statement | Emits classic port `0x80` wait |
+| `read_port(port)` | expression | Reads byte from I/O port |
+| `write_port(port, value)` | statement | Writes byte to I/O port |
+| `pic_eoi()` | statement | Sends EOI to master PIC |
+| `irq_disable()` | statement | Emits `cli` |
+| `irq_enable()` | statement | Emits `sti` |
+
+## read_port
+
+`read_port(port)` is an expression.
+
+Example:
+
+```sl
+lib(std)
+x64
+type(console)
+
+local key = read_port(0x60)
+```
+
+It returns a byte value in `rax`.
+
+## write_port
+
+`write_port(port, value)` is a statement.
+
+Example:
+
+```sl
+lib(std)
+x64
+type(console)
+
+local port = 0x20
+local value = 0x20
+
+write_port(port, value)
+```
+
+## pic_eoi
+
+`pic_eoi()` is a convenience command.
+
+It is equivalent to:
+
+```sl
+write_port(0x20, 0x20)
+```
+
+Use `pic_eoi()` when the meaning is specifically “send End Of Interrupt to master PIC”.
 
 # 68. Current Feature Matrix
 
@@ -2280,6 +2490,20 @@ Broken Sentinel should fail as Sentinel, not as NASM.
 | structs | Experimental | Parsed, not full codegen |
 | libraries | Planned | v0.4-alpha |
 | self-hosting | Future | Long-term |
+| lib(std) | Working | First x64 OSDev helper pack |
+| StdCall | Working | std statement commands |
+| ReadPortExpr | Working | `read_port()` as expression |
+| vga_print | Working | std VGA output helper |
+| vga_clear | Working | clears VGA text buffer |
+| halt | Working | emits safe halt loop |
+| nop | Working | emits `nop` |
+| io_wait | Working | emits port `0x80` wait |
+| read_port | Working | reads byte from I/O port |
+| write_port | Working | writes byte to I/O port |
+| pic_eoi | Working | sends EOI to master PIC |
+| irq_disable | Working | emits `cli` |
+| irq_enable | Working | emits `sti` |
+| std x64 guard | Working | rejects `lib(std)` outside x64 |
 
 ---
 
@@ -2301,6 +2525,10 @@ Broken Sentinel should fail as Sentinel, not as NASM.
 | Debug info | Not stable |
 | Multi-file projects | Planned through libraries/use |
 | Self-hosting | Future |
+| lib(std) | x64-only in v0.4-alpha-stable |
+| std | Small first OSDev helper pack, not a full standard library |
+| read_port/write_port | Basic byte port I/O only |
+| Networking | Not implemented yet |
 
 ---
 
@@ -2479,6 +2707,11 @@ Known test groups:
 | Semantic Killer | semantic edge cases | Passed |
 | Register Clobber Test | print vs function args | Passed |
 | Core Hardening Beast | flat storage + ABI stress | Passed |
+| std Smoke Test | basic `lib(std)` commands | Passed |
+| std Port Test | `read_port` / `write_port` | Passed |
+| std IRQ Test | `irq_disable` / `irq_enable` / `pic_eoi` | Passed |
+| std Big Stress Test | all v0.4 std commands together | Passed |
+| std Error Tests | S021 / S022 / S024 / S026 | Passed |
 
 ---
 
@@ -2546,41 +2779,29 @@ print emits push/pop rsi.
 
 ---
 
-# 76. v0.4-alpha Direction
+# 76. v0.4-alpha-stable Important Additions
 
-`v0.4-alpha` should focus on the first library layer.
+`v0.4-alpha-stable` adds the first working `lib(std)` OSDev helper layer.
 
-Main target:
+Important additions:
 
-```sl
-lib(std)
-```
+- `lib(std)` library declaration
+- `StdCall` statement commands
+- `ReadPortExpr` expression node
+- `vga_print()`
+- `vga_clear()`
+- `nop()`
+- `halt()`
+- `io_wait()`
+- `read_port()`
+- `write_port()`
+- `pic_eoi()`
+- `irq_disable()`
+- `irq_enable()`
+- `S021–S026` diagnostics
+- x64-only std guard
 
-The first `std` should not be huge.
-
-It should expose a practical OSDev command pack.
-
-Possible commands:
-
-```sl
-halt()
-nop()
-panic("message")
-io_wait()
-read_port(port)
-write_port(port, value)
-vga_clear()
-vga_print("message")
-pic_eoi()
-```
-
-The goal of v0.4-alpha:
-
-```text
-Make OSDev programs easier without bloating the compiler core.
-```
-
----
+This is the first Sentinel version where the language starts providing direct OSDev helper commands instead of only raw core syntax.
 
 # 77. Library Model
 
@@ -3189,14 +3410,13 @@ But the core is now much harder to break than earlier versions.
 | `v0.1-alpha` | Basic compiler foundation |
 | `v0.2-alpha` | Working x64 compiler core |
 | `v0.3-alpha` | Core hardening and semantic diagnostics |
-| `v0.4-alpha` | First `lib(std)` OSDev command pack |
-| `v0.5-alpha` | Demo kernel / mini OS |
+| `v0.4-alpha-stable` | First `lib(std)` OSDev command pack |
+| `v0.5-alpha` | Demo kernel / mini OS and GitHub Pages documentation site |
 | `v0.6-alpha` | Runtime and low-level library expansion |
 | `v0.7-alpha` | Driver and hardware helper experiments |
 | `v0.8-alpha` | Host tooling research |
 | `v0.9-beta` | Testing and documentation hardening |
 | `v1.0` | Stable experimental OSDev language |
-
 ---
 
 # 97. Future Static Documentation Site
@@ -3242,30 +3462,30 @@ The specification remains the full source of truth.
 
 Sentinel is young, experimental, and intentionally low-level.
 
-Its current strength is not having thousands of libraries.
+`v0.3-alpha` hardened the compiler core.
 
-Its current strength is this:
+`v0.4-alpha-stable` adds the first working OSDev helper layer through `lib(std)`.
+
+Current strength:
 
 ```text
 Small core.
 Readable low-level syntax.
 Real NASM output.
-Bootloader and kernel potential.
-Fast iteration.
-Compiler hardening already underway.
+Semantic diagnostics.
+Flat storage discipline.
+First std hardware helpers.
 ```
 
 Sentinel should continue growing carefully.
 
-The next major step is not adding everything at once.
-
 The next major step is:
 
 ```text
-v0.4-alpha = lib(std) + OSDev helper commands.
+v0.5-alpha = demo kernel / mini OS + GitHub Pages documentation site.
 ```
 
-After that, Sentinel can grow toward demo kernels, drivers, graphics, networking, tooling, and eventually self-hosting.
+After that, Sentinel can grow toward richer libraries, driver helpers, graphics, networking, tooling, and eventually self-hosting.
 
 ```text
 Readable.
