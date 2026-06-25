@@ -1,0 +1,6 @@
+index.html linguist-vendored
+*.html linguist-vendored
+*.pdf linguist-vendored
+
+*.asm linguist-detectable=true
+*.asm linguist-language=Assembly
