@@ -7,6 +7,11 @@ Sentinel Lang is an experimental systems programming language that compiles `.sl
 It is designed as a practical middle ground between readable high-level syntax and low-level assembly control.
 
 ---
+## Documentation
+
+Sentinel Lang Wiki:
+
+https://kotarimorm.github.io/SENTINEL_LANG/
 
 ## Current Status
 
