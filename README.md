@@ -6,6 +6,50 @@ Sentinel Lang is an experimental systems programming language that compiles `.sl
 
 It is designed as a practical middle ground between readable high-level syntax and low-level assembly control.
 
+## Transparent Build Model
+
+Sentinel does not directly hide machine code behind an opaque backend.
+
+The current build path is:
+
+~~~text
+.sl source
+    │
+    ▼
+Sentinel compiler
+    │
+    ▼
+Readable NASM assembly
+    │
+    ▼
+NASM
+    │
+    ▼
+Flat binary
+~~~
+
+The Sentinel compiler backend is currently private, but the generated NASM output is explicit and inspectable.
+
+Users can:
+
+- inspect generated `.asm` files
+- modify generated NASM manually
+- assemble the output with NASM themselves
+- compare Sentinel source with generated assembly
+- debug the resulting binary using normal low-level tools
+
+Sentinel does not ask users to blindly trust hidden machine code.
+
+The trust boundary is NASM:
+
+~~~text
+Sentinel generates assembly.
+NASM generates the final binary.
+~~~
+
+If you trust NASM and inspect the generated assembly, you can verify what Sentinel is asking NASM to build.
+
+> Sentinel compiler core is private, but Sentinel output is transparent: `.sl → readable NASM → NASM → flat binary`.
 ---
 ## Documentation
 
