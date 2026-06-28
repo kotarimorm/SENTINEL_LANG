@@ -1,9 +1,11 @@
 # Sentinel Lang Status
 
-**Current version:** `v0.4-alpha-stable`  
-**Current phase:** First OSDev std helper pack  
+**Current version:** `v0.5-alpha`  
+**Current phase:** Kernel Toolkit Preview  
 **Main target:** `x64`  
-**Project status:** Experimental alpha-stable milestone
+**Project status:** Experimental alpha milestone  
+**Compiler backend:** Private  
+**Primary output:** NASM assembly / flat binary
 
 ---
 
@@ -11,16 +13,26 @@
 
 Sentinel Lang is an experimental low-level programming language for OSDev, bootloaders, kernels, and direct hardware-oriented code generation.
 
-`v0.4-alpha-stable` builds on the `v0.3-alpha` compiler hardening milestone and adds the first working built-in OSDev helper pack:
+`v0.5-alpha` builds on `v0.4-alpha-stable`.
+
+`v0.4-alpha-stable` introduced the first working built-in OSDev helper pack:
 
 ```sl
 lib(std)
 ```
 
+`v0.5-alpha` hardens the current x64 kernel-style path through stricter semantic rules and a larger stress test.
+
 Current milestone result:
 
 ```text
-Sentinel v0.4-alpha-stable code core is ready.
+Sentinel v0.5-alpha code core passed current alpha validation.
+```
+
+Main proof:
+
+```text
+Kernel Beast Test v0.5-alpha: Passed
 ```
 
 ---
@@ -35,15 +47,35 @@ Sentinel v0.4-alpha-stable code core is ready.
 | Semantic analyzer | Working |
 | NASM codegen | Working |
 | Optimizer | Basic / working |
-| x64 output | Working |
+| x64 output | Main tested path |
 | x16 boot output | Experimental / working |
+| x32 output | Experimental |
 | Flat binary pipeline | Working |
 | IDE integration | Working locally |
 | Compiler backend | Private |
+| Generated NASM | Readable / inspectable |
 
 ---
 
-## Language Status
+## v0.5-alpha Main Results
+
+| Result | Status |
+| :--- | :--- |
+| Kernel Beast Test | Passed |
+| x64 kernel-style compilation | Passed |
+| `shift_left` codegen fix | Passed |
+| `shift_right` codegen fix | Passed |
+| Forward `start` call rejection | Passed |
+| Forward `get` call rejection | Passed |
+| `S027` semantic diagnostic | Working |
+| Top-level `local` anywhere rule | Working |
+| Function-local `local` rejection | Working |
+| `lib(std)` x64-only rule | Preserved |
+| Flat binary output | Passed |
+
+---
+
+## Current Language Status
 
 | Feature | Status |
 | :--- | :--- |
@@ -51,68 +83,155 @@ Sentinel v0.4-alpha-stable code core is ready.
 | `x32` | Experimental |
 | `x64` | Main tested mode |
 | `type(console)` | Working |
+| `lib(std)` | Working / x64-only |
 | `local` | Working |
 | `redo` | Working |
+| `create` | Working |
+| `start` | Working |
+| `get result()` | Experimental / working path |
 | `if / then / else / end` | Working |
 | `while` | Working |
 | `repeat` | Working |
-| `create` functions | Working |
-| Numbered function steps | Working |
-| `start` full calls | Working |
-| Safe no-param step calls | Working |
-| Function arguments | Working |
-| `get ... result()` | Experimental |
-| Arrays | Working |
-| Array indexing | Working |
-| `low-code` | Working / limited |
-| `try/catch` | Syntax-only |
-| `FREERAM` | Experimental |
-| `lib(std)` | Working / x64-only |
+| Arrays | Working / basic indexing tested |
+| Structs | Experimental |
+| `try/catch` | Syntax-level / experimental |
+| `low-code` | Limited / experimental |
+| Function steps | Working |
+| Step calls | Working with restrictions |
+| Parameterized step calls | Blocked by semantic analyzer |
+| Forward function calls | Blocked by `S027` |
 
 ---
 
-## v0.3-alpha Hardening Status
+## Current Storage Model
 
-`v0.3-alpha` introduced the semantic hardening layer.
+Sentinel currently uses flat storage discipline.
 
-Still active in `v0.4-alpha-stable`:
+Rules:
 
-| Hardening Area | Status |
-| :--- | :--- |
-| Duplicate storage detection | Working |
-| Unknown storage mutation detection | Working |
-| Unknown function detection | Working |
-| Missing function step detection | Working |
-| Function argument count validation | Working |
-| Parameter/storage collision detection | Working |
-| Unsafe parameterized step-call protection | Working |
-| x64 `rsi` print preservation | Working |
+```text
+local declares flat source-file storage.
+local may appear anywhere at top-level.
+local inside create functions is forbidden.
+```
+
+Valid:
+
+```sl
+lib(std)
+x64
+type(console)
+
+create boot()
+    (1) vga_print("boot")
+
+local status = 1
+
+start boot()
+halt()
+```
+
+Invalid:
+
+```sl
+lib(std)
+x64
+type(console)
+
+create test()
+    (1) local x = 10
+```
+
+Current diagnostic:
+
+```text
+[SEMANTIC S011] local inside function is not allowed.
+```
 
 ---
 
-## v0.4-alpha-stable std Status
+## Current Function Order Rule
 
-`v0.4-alpha-stable` adds the first built-in OSDev command pack.
+`v0.5-alpha` requires functions to be declared before they are called.
 
-Current std commands:
+Valid:
+
+```sl
+lib(std)
+x64
+type(console)
+
+create boot()
+    (1) vga_print("boot")
+
+start boot()
+halt()
+```
+
+Invalid:
+
+```sl
+lib(std)
+x64
+type(console)
+
+start boot()
+
+create boot()
+    (1) vga_print("boot")
+
+halt()
+```
+
+Current diagnostic:
+
+```text
+[SEMANTIC S027] Function `boot` is called before declaration.
+```
+
+This applies to:
+
+- `start`
+- `get`
+
+---
+
+## Current lib(std) Status
+
+Current `lib(std)` rule:
+
+```text
+lib(std) is x64-only in v0.5-alpha.
+```
+
+Current command set:
 
 | Command | Status | Notes |
 | :--- | :--- | :--- |
-| `vga_print(value)` | Working | VGA console output helper |
-| `vga_clear()` | Working | Clears VGA text buffer |
+| `vga_print(value)` | Working | VGA-style output |
+| `vga_clear()` | Working | Clears VGA text output |
 | `nop()` | Working | Emits `nop` |
-| `halt()` | Working | Emits safe halt loop |
-| `io_wait()` | Working | Emits port `0x80` wait |
-| `read_port(port)` | Working | Expression, returns byte in `rax` |
-| `write_port(port, value)` | Working | Statement, supports expressions |
-| `pic_eoi()` | Working | Sends EOI to master PIC |
+| `halt()` | Working | Emits halt behavior |
+| `io_wait()` | Working | I/O wait helper |
+| `read_port(port)` | Working | Expression |
+| `write_port(port, value)` | Working | Statement |
+| `pic_eoi()` | Working | PIC end-of-interrupt helper |
 | `irq_disable()` | Working | Emits `cli` |
 | `irq_enable()` | Working | Emits `sti` |
 
-Current std limitation:
+Invalid:
+
+```sl
+lib(std)
+x16
+
+halt()
+```
+
+Expected diagnostic:
 
 ```text
-lib(std) is x64-only in v0.4-alpha-stable.
+[SEMANTIC S026] lib(std) currently supports x64 mode only.
 ```
 
 ---
@@ -126,7 +245,7 @@ lib(std) is x64-only in v0.4-alpha-stable.
 | `S003` | Duplicate storage | Working |
 | `S004` | Duplicate parameter | Working |
 | `S005` | Parameter conflicts with storage | Working |
-| `S006` | Reserved / legacy parameter conflict slot | Reserved |
+| `S006` | Reserved / legacy conflict slot | Reserved |
 | `S007` | Cannot redo parameter directly | Working |
 | `S008` | Cannot modify unknown storage | Working |
 | `S009` | Unknown function | Working |
@@ -147,6 +266,7 @@ lib(std) is x64-only in v0.4-alpha-stable.
 | `S024` | Wrong std command argument count | Working |
 | `S025` | Reserved / legacy dynamic port restriction | Reserved |
 | `S026` | `lib(std)` outside supported mode | Working |
+| `S027` | Function called before declaration | Working |
 
 ---
 
@@ -162,43 +282,150 @@ lib(std) is x64-only in v0.4-alpha-stable.
 | Semantic error tests | Passed |
 | Register clobber tests | Passed |
 | v0.3 core hardening tests | Passed |
-| std smoke tests | Passed |
-| std port I/O tests | Passed |
-| std IRQ helper tests | Passed |
-| std big stress test | Passed |
-| std semantic error tests | Passed |
+| v0.4 std smoke tests | Passed |
+| v0.4 port I/O tests | Passed |
+| v0.4 IRQ helper tests | Passed |
+| v0.4 std semantic error tests | Passed |
+| v0.5 Kernel Beast Test | Passed |
+| v0.5 shift codegen tests | Passed |
+| v0.5 declaration-order tests | Passed |
+| v0.5 top-level local order tests | Passed |
 
 Current test conclusion:
 
 ```text
-v0.4-alpha-stable passed current validation.
+v0.5-alpha passed current alpha validation.
 ```
 
 ---
 
-## Known Limitations
+## Kernel Beast Test Status
+
+The Kernel Beast Test is the main `v0.5-alpha` stress test.
+
+It covers:
+
+- `lib(std)`
+- `x64`
+- `type(console)`
+- VGA output
+- IRQ helpers
+- PIC helpers
+- port I/O
+- arrays
+- indexing
+- loops
+- nested conditionals
+- function calls
+- six-argument function pressure
+- bitwise operations
+- shift operations
+- kernel-style boot sequencing
+
+Result:
+
+```text
+Passed
+```
+
+Meaning:
+
+```text
+Sentinel can compile the current large x64 kernel-style stress test into NASM and flat binary output.
+```
+
+---
+
+## Important v0.5-alpha Fix
+
+`v0.5-alpha` fixes x64 shift operation code generation.
+
+Old invalid pattern:
+
+```asm
+shl rbx, rax
+```
+
+Correct patterns:
+
+```asm
+shl rbx, 3
+```
+
+or:
+
+```asm
+shl rbx, cl
+```
+
+Current status:
+
+```text
+shift_left / shift_right generate valid NASM in current tested cases.
+```
+
+---
+
+## Current x16 Status
+
+The x16 bootloader path remains experimental and separate from `lib(std)`.
+
+Example direction:
+
+```sl
+custing(silk)
+x16
+
+local msg = "Hello from Bootloader!"
+
+create boot()
+    (1) print(msg)
+    (2) low-code:
+            cli
+            halt
+
+start boot()
+```
+
+Current status:
+
+```text
+Experimental / working path.
+```
+
+Important:
+
+```text
+lib(std) is not supported in x16 in v0.5-alpha.
+```
+
+---
+
+## Current Known Limitations
 
 | Area | Limitation |
 | :--- | :--- |
 | `lib(std)` | x64-only |
 | Type system | Incomplete |
 | Memory safety | Not implemented |
-| Return values | No explicit `return` keyword |
-| `get result()` | Depends on generated `rax` |
-| Strings | No real string comparison |
+| Return values | No stable explicit `return` keyword |
+| `get result()` | Experimental |
+| Strings | No full string system |
 | Arrays | No bounds checking |
-| Exceptions | `try/catch` is syntax-only |
 | Structs | Experimental |
-| Inline ASM | `low-code` is limited |
+| Exceptions | `try/catch` is syntax-level / experimental |
+| Optimizer | Basic only |
+| Package ecosystem | Planned for `v0.6-alpha` |
+| Library Hub | Planned for `v0.6-alpha` |
 | Networking | Not implemented |
 | Driver stack | Not implemented |
 | Self-hosting | Long-term goal |
 
 ---
 
-## Recommended Current Style
+## Current Recommended Style
 
-Recommended `v0.4-alpha-stable` style:
+Recommended `v0.5-alpha` style:
 
 ```sl
 lib(std)
@@ -214,87 +441,80 @@ create keyboard_poll()
     (3) pic_eoi()
 
 start keyboard_poll()
-
 halt()
 ```
 
-Core style rules:
+Recommended ordering:
 
 ```text
-Declare storage with local.
-Mutate storage with redo.
-Use lib(std) for OSDev helpers.
-Use x64 with lib(std).
-Use step calls only for no-param functions.
+1. lib / mode / type
+2. top-level local declarations
+3. create functions
+4. more top-level local declarations if needed
+5. start/get calls
+6. halt
+```
+
+Required rule:
+
+```text
+create must appear before start/get calls that reference it.
 ```
 
 ---
 
-## Next Target
+## Roadmap Status
 
-Next planned milestone:
-
-```text
-v0.5-alpha
-```
-
-Primary goals:
-
-- demo kernel / mini OS
-- GitHub Pages documentation site
-- better public examples
-- clearer getting-started guide
-- first real OSDev tutorial flow
-- expanded docs for `lib(std)`
-
-`v0.5-alpha` should focus on proving that Sentinel can be used to build a small readable OSDev prototype.
+| Version | Status | Goal |
+| :--- | :--- | :--- |
+| `v0.1-alpha` | Completed | Compiler foundation |
+| `v0.2-alpha` | Completed | Working x64 core |
+| `v0.3-alpha` | Completed | Core hardening and semantic diagnostics |
+| `v0.4-alpha-stable` | Completed | First `lib(std)` OSDev helper pack |
+| `v0.5-alpha` | Current | Kernel Toolkit Preview |
+| `v0.6-alpha` | Planned | Library Ecosystem Alpha |
+| `v0.7-alpha` | Planned | Optimizer / ASM slimming |
+| `v0.7.1-alpha` | Planned | Advanced TOP optimization pass |
+| `v0.8-alpha` | Planned | Playground and tooling |
+| `v0.9-beta` | Planned | Stability, tests, and docs hardening |
+| `v1.0` | Future | Stable experimental OSDev-first core |
 
 ---
 
-## Project Direction
+## v0.6-alpha Direction
+
+`v0.6-alpha` is planned as the Library Ecosystem Alpha.
+
+Planned direction:
+
+- public library authoring specification
+- one library = one GitHub repository
+- GitHub stars as the first rating signal
+- `sentinel-lib.json` manifest
+- optional `.sentinel_lib_graph` visual metadata
+- static Library Hub preview
+- website-based library package generator
+- official / approved / community / experimental / unsafe / deprecated statuses
+
+Review idea:
 
 ```text
-v0.1-alpha
-    ↓
-basic compiler foundation
-
-v0.2-alpha
-    ↓
-working x64 compiler core
-
-v0.3-alpha
-    ↓
-core hardening + semantic diagnostics
-
-v0.4-alpha-stable
-    ↓
-first lib(std) OSDev helper pack
-
-v0.5-alpha
-    ↓
-demo kernel / mini OS + documentation site
-
-v1.0
-    ↓
-stable experimental OSDev language core
+5 GitHub stars = review candidate.
+5 GitHub stars does not mean automatic approval.
 ```
+
+Approval should depend on code quality, tests, examples, manifest validity, license clarity, and documented unsafe behavior.
 
 ---
 
 ## Final Status
 
-Sentinel `v0.4-alpha-stable` is the first version where the language has both:
-
 ```text
-a hardened compiler core
+Sentinel Lang v0.5-alpha
+Kernel Toolkit Preview
+Status: Passed current alpha validation
 ```
 
-and:
+Sentinel is still experimental alpha software.
 
-```text
-a working OSDev helper library layer
-```
-
-This makes `v0.4-alpha-stable` an important transition point.
-
-Sentinel is still alpha, but it is now moving from pure compiler core work toward practical OSDev usage.
+However, the current compiler is now strong enough for OSDev experiments, kernel-style prototypes, and transparent `.sl -> NASM -> flat binary` testing.
