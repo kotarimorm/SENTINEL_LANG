@@ -1,10 +1,32 @@
-# SENTINEL_LANG
+# Sentinel Lang
 
 Experimental low-level programming language for OSDev, bootloaders, kernels, and direct hardware-oriented code generation.
 
-Sentinel Lang is an experimental systems programming language that compiles `.sl` source code into readable NASM assembly and then into a flat binary.
+Sentinel compiles readable `.sl` source code into inspectable NASM assembly and then into a flat binary.
 
-It is designed as a practical middle ground between readable low-level syntax and explicit assembly-level control.
+```text
+Sentinel source
+      |
+      v
+Lexer / Parser / AST
+      |
+      v
+Semantic Analyzer
+      |
+      v
+NASM Code Generator
+      |
+      v
+Optimizer
+      |
+      v
+NASM
+      |
+      v
+Flat binary
+```
+
+Sentinel is designed as a practical middle ground between readable high-level structure and explicit low-level control.
 
 ---
 
@@ -12,135 +34,145 @@ It is designed as a practical middle ground between readable low-level syntax an
 
 | Field | Value |
 | :--- | :--- |
-| **Version** | `v0.5-alpha` |
-| **Milestone** | Kernel Toolkit Preview |
+| **Version** | `v0.6-alpha` |
+| **Release date** | September 1, 2026 |
+| **Milestone** | Core Language Completion |
 | **Main target** | `x64` |
+| **Secondary target** | `x16` boot sectors |
+| **Incomplete target** | `x32` |
 | **Output** | NASM assembly / flat binary |
-| **Compiler backend** | Private |
-| **Project type** | Experimental OSDev-first systems language |
-| **Main focus** | Kernel-style stress testing and compiler hardening |
+| **Compiler backend** | Private experimental compiler |
+| **Project type** | OSDev-first systems language |
 | **Stability** | Alpha |
+
+Current strongest language path:
+
+```sl
+lib(std)
+x64
+type(console)
+```
+
+Confirmed bootable path:
+
+```sl
+custing(silk)
+lib(std)
+x16
+type(console)
+```
 
 ---
 
 ## Documentation
 
-Sentinel Lang Wiki:
+### Sentinel Lang Wiki
 
 ```text
 https://kotarimorm.github.io/SENTINEL_LANG/
 ```
 
-Public repository:
+### Public Repository
 
 ```text
 https://github.com/kotarimorm/SENTINEL_LANG
+```
+
+Main documents:
+
+- `SPECIFICATION.md` — complete current language specification
+- `ROADMAP.md` — public development direction
+- `TEST_REPORT.md` — compiler validation results
+- `status.md` — current implementation status
+- `site/` — GitHub Pages wiki
+- `site/anti_manual.pdf` — Sentinel Anti-Manual
+
+---
+
+## v0.6-alpha
+
+`v0.6-alpha` is the **Core Language Completion** milestone.
+
+The release introduces an explicit model for temporary function values and step-to-step data flow.
+
+Main additions:
+
+- `stand` temporary function storage
+- `give to (N)` explicit step transfer
+- x64 stack frames for stand values
+- final `result expression` semantics
+- `get function(arguments)` result retrieval
+- ascending numbered-step validation
+- protection against direct stand-dependent step calls
+- removal of unsafe stand-dependent wrappers
+- strict rejection of unknown source characters
+- x16 per-command `lib(std)` validation
+- improved parameter symbol restoration
+- updated semantic diagnostics through `S037`
+
+Short version:
+
+```text
+v0.4-alpha-stable = first built-in OSDev std commands
+v0.5-alpha        = Kernel Beast and x64 hardening
+v0.6-alpha        = stand/give and core language completion
 ```
 
 ---
 
 ## Transparent Build Model
 
-Sentinel does not directly hide machine code behind an opaque backend.
+The Sentinel compiler backend is currently private.
 
-The current build path is:
-
-```text
-.sl source
-    │
-    ▼
-Sentinel compiler
-    │
-    ▼
-Readable NASM assembly
-    │
-    ▼
-NASM
-    │
-    ▼
-Flat binary
-```
-
-The Sentinel compiler backend is currently private, but the generated NASM output is explicit and inspectable.
+Generated NASM output remains explicit and inspectable.
 
 Users can:
 
-- inspect generated `.asm` files
-- modify generated NASM manually
-- assemble the output with NASM themselves
+- inspect generated `.asm`
 - compare Sentinel source with generated assembly
-- debug the resulting binary using normal low-level tools
+- manually assemble generated NASM
+- debug the resulting binary
+- inspect register usage
+- inspect stack-frame allocation
+- verify emitted runtime helpers
 
-Sentinel does not ask users to blindly trust hidden machine code.
-
-The trust boundary is NASM:
+Trust boundary:
 
 ```text
 Sentinel generates assembly.
-NASM generates the final binary.
+NASM generates machine code.
 ```
 
-If you trust NASM and inspect the generated assembly, you can verify what Sentinel is asking NASM to build.
-
-> Sentinel compiler core is private, but Sentinel output is transparent: `.sl → readable NASM → NASM → flat binary`.
-
----
-
-## v0.5-alpha Overview
-
-`v0.5-alpha` is the **Kernel Toolkit Preview** milestone.
-
-This release does not try to add a huge new ecosystem layer.
-
-Instead, it hardens the existing x64 OSDev path through a large kernel-style stress test and stricter semantic rules.
-
-Main results:
-
-| Area | Result |
-| :--- | :--- |
-| **Kernel Beast Test** | Passed |
-| **x64 kernel-style compilation** | Strengthened |
-| **`shift_left` / `shift_right` codegen** | Fixed |
-| **Function declaration order** | Enforced |
-| **Forward `start` calls** | Rejected with `S027` |
-| **Forward `get` calls** | Rejected with `S027` |
-| **Top-level `local` declarations** | May appear anywhere |
-| **Function-local `local` declarations** | Still forbidden |
-| **`lib(std)`** | Still x64-only |
-| **Generated NASM** | Readable and inspectable |
-
-Short version:
+Sentinel does not ask users to blindly trust an opaque machine-code backend.
 
 ```text
-v0.4-alpha-stable = first lib(std)
-v0.5-alpha        = prove the kernel-style path holds under stress
-v0.6-alpha        = library ecosystem
+.sl -> readable NASM -> NASM -> flat binary
 ```
 
 ---
 
 ## What Sentinel Is
 
-Sentinel is a low-level experimental language focused on operating system development.
+Sentinel is an experimental systems programming language focused on low-level development.
 
-It is not a general-purpose scripting language and it is not trying to hide the hardware.
+It is intended for:
 
-Instead, it provides a simpler syntax over low-level concepts while still producing explicit NASM output.
+- bootloader experiments
+- kernel prototypes
+- hardware-oriented code
+- OSDev helper libraries
+- direct port I/O
+- explicit execution stages
+- readable NASM-backed programs
+- compiler and language architecture experiments
+
+Sentinel does not try to hide the hardware.
+
+Its goal is:
 
 ```text
-Readable source code
-        │
-        ▼
-Compiler pipeline
-        │
-        ▼
-NASM assembly
-        │
-        ▼
-Flat binary
+Make low-level experiments faster, clearer, and harder to misuse.
 ```
-
-Sentinel is designed for people who want low-level control without writing every boot/kernel experiment directly in raw assembly.
 
 ---
 
@@ -150,449 +182,629 @@ Sentinel is currently not:
 
 | Not A | Reason |
 | :--- | :--- |
-| **Production language** | Still alpha |
-| **C/C++ replacement** | Ecosystem, optimizer, ABI, and tooling are not mature enough |
+| **Production-ready language** | The language remains alpha |
+| **Complete C/C++ replacement** | ABI, ecosystem, optimizer, and targets remain incomplete |
 | **Rust replacement** | Full memory safety is not implemented |
-| **Full OS framework** | OSDev libraries are still early |
-| **Desktop app framework** | Not the current focus |
-| **High-level scripting language** | Sentinel stays close to hardware |
-| **Package ecosystem** | Planned for `v0.6-alpha` |
-| **Self-hosted language** | Long-term goal only |
+| **Complete OS framework** | Drivers, filesystems, networking, and graphics libraries are unfinished |
+| **Desktop framework** | Desktop development is not the current focus |
+| **Stable ABI language** | The current ABI is experimental |
+| **Complete x86 toolchain** | x32 remains incomplete |
+| **Self-hosted compiler** | The compiler is not written in Sentinel |
+| **Automatic boot-image builder** | Image composition remains external |
+| **Complete x64 boot environment** | A long-mode loader is not implemented yet |
 
-Sentinel is best understood as:
-
-```text
-Readable low-level language for OSDev experiments.
-```
-
----
-
-## Example
-
-```sl
-lib(std)
-x64
-type(console)
-
-create boot()
-    (1) vga_clear()
-    (2) vga_print("Sentinel online")
-
-start boot()
-halt()
-```
-
-Current pipeline:
+Current honest description:
 
 ```text
-demo.sl -> Sentinel compiler -> demo.asm -> NASM -> demo.bin
-```
-
-Example generated style:
-
-```asm
-BITS 64
-
-_start:
-    call sl_func_boot
-    hlt
+A real experimental OSDev-first compiler with readable syntax,
+semantic diagnostics, NASM output, and flat binary generation.
 ```
 
 ---
 
 ## Core Language Model
 
-Sentinel uses a flat storage discipline.
+Sentinel now separates persistent and temporary values.
 
-This is intentional.
-
-Core concepts:
-
-| Keyword / Concept | Meaning |
+| Concept | Meaning |
 | :--- | :--- |
-| `local` | Declares flat source-file storage |
-| `redo` | Mutates existing storage |
+| `local` | Persistent flat program storage |
+| `stand` | Temporary storage for one function invocation |
+| `give` | Explicitly transfers a stand value to a later step |
+| `redo` | Mutates persistent storage or an active stand |
 | `create` | Declares a function |
-| `start` | Calls a function or function step |
-| `get` | Calls a function and reads result path |
-| `result` | Selects result step |
-| `lib(std)` | Enables built-in OSDev helper commands |
-| `type(console)` | Selects console-style output path |
-| `x16` / `x32` / `x64` | Selects target mode |
+| `start` | Executes a function or safe independent step |
+| `get` | Executes a function and retrieves its result |
+| `result` | Produces the final function value |
+| `lib(std)` | Enables built-in OSDev commands |
+| `type(console)` | Selects console-oriented output |
+| `x16`, `x32`, `x64` | Select compilation target |
 
-Sentinel does not currently use classical lexical scopes.
+Core distinction:
 
-Function-local storage is not supported in `v0.5-alpha`.
+```text
+local = persistent state
+stand = temporary function state
+```
 
 ---
 
-## Flat Storage
+## Persistent Storage
 
-`local` declares flat storage.
-
-A `local` declaration may appear anywhere at top-level:
+`local` declares persistent flat storage.
 
 ```sl
-lib(std)
-x64
-type(console)
-
-local a = 10
-
-create boot()
-    (1) vga_print("boot")
-
-local b = 20
-
-start boot()
-halt()
+local counter = 0
+local status = 1
 ```
 
-Both `a` and `b` are flat storage symbols.
-
-Invalid:
+Top-level storage may be accessed from functions:
 
 ```sl
-lib(std)
 x64
-type(console)
 
-create test()
-    (1) local x = 10
+local counter = 0
+
+create update()
+    (1) redo: counter to counter + 1
+
+start update()
 ```
 
-Function-local `local` declarations are rejected because Sentinel does not currently have a function-local stack allocation model.
+Sentinel does not currently use classical lexical scopes for `local`.
+
+A top-level `local` exists for the complete program.
 
 ---
 
-## Function Declaration Order
+## Temporary Function Storage
 
-`v0.5-alpha` adds stricter function declaration order.
-
-Functions must be declared before `start` or `get` calls that reference them.
-
-Valid:
+`stand` declares a temporary value inside one x64 function invocation.
 
 ```sl
-lib(std)
-x64
-type(console)
-
-create boot()
-    (1) vga_print("boot")
-
-start boot()
-halt()
+create calculate(a, b)
+    (1) stand: temporary = a + b
 ```
 
-Invalid:
+A stand value:
+
+- lives inside the current function stack frame
+- does not become global storage
+- disappears when the function returns
+- receives a separate value for each invocation
+- may be transferred to another step using `give`
+
+Generated direction:
+
+```asm
+push rbp
+mov  rbp, rsp
+sub  rsp, 16
+
+mov  [rbp-8], rax
+```
+
+`stand` is currently x64-only.
+
+---
+
+## Explicit Step Transfer
+
+Use `give to (N)` to transfer a stand value to a later numbered step.
 
 ```sl
-lib(std)
-x64
-type(console)
-
-start boot()
-
-create boot()
-    (1) vga_print("boot")
-
-halt()
+create calculate(a, b)
+    (1) stand: temporary = a + b give to (2)
+    (2) result temporary * 2
 ```
+
+Execution:
+
+```text
+Step 1 creates temporary.
+Step 1 gives temporary to step 2.
+Step 2 reads temporary.
+Step 2 returns the final result.
+```
+
+Current rules:
+
+- the target step must exist
+- the target must be inside the same function
+- the target must come after the source step
+- backward transfers are forbidden
+- the stand keeps the same name
+- the value exists only during the current invocation
+- direct calls to dependent steps are rejected
+
+---
+
+## Direct Step Safety
+
+Consider:
+
+```sl
+create pipeline()
+    (1) stand: temporary = 30 give to (2)
+    (2) result temporary * 2
+```
+
+This is valid:
+
+```sl
+start pipeline()
+```
+
+This is invalid:
+
+```sl
+start pipeline(2)
+```
+
+The second call skips the step that creates `temporary`.
 
 Expected diagnostic:
 
 ```text
-[SEMANTIC S027] Function `boot` is called before declaration.
+[SEMANTIC S036]
+Step `(2)` requires stand values from earlier steps.
 ```
 
-This rule keeps Sentinel programs readable and avoids hidden forward-resolution behavior.
+The code generator also skips unsafe independent wrappers:
+
+```asm
+; step wrapper sl_func_pipeline_L2 skipped:
+; requires incoming stand values
+```
+
+---
+
+## Function Results
+
+`result` produces the final function value.
+
+```sl
+create add(a, b)
+    (1) result a + b
+```
+
+Current rules:
+
+- `result` is only valid inside a function
+- `result` must appear in the final function step
+- `result` must be the final statement
+- functions used with `get` must contain a result
+- the x64 result is returned through `rax`
+
+Retrieve the result using `get`:
+
+```sl
+local left = 10
+local right = 20
+local answer = get add(left, right)
+```
+
+Generated direction:
+
+```asm
+call sl_func_add
+mov  [sl_var_answer], rax
+```
+
+---
+
+## start Versus get
+
+| Command | Purpose |
+| :--- | :--- |
+| `start function()` | Execute for side effects |
+| `get function()` | Execute and retrieve the result |
+
+Side-effect function:
+
+```sl
+create show()
+    (1) vga_print("Sentinel online")
+
+start show()
+```
+
+Value function:
+
+```sl
+create calculate(a, b)
+    (1) result a + b
+
+local answer = get calculate(left, right)
+```
+
+Using `start` on a result-producing function ignores the returned value.
+
+Using `get` on a function without `result` is rejected.
+
+---
+
+## Stand Beast
+
+The primary `v0.6-alpha` validation program:
+
+```sl
+lib(std)
+x64
+type(console)
+
+create stand_beast(a, b, c)
+    (1) stand: base = a + b give to (2)
+    (2) stand: doubled = base * 2 give to (3)
+    (3) stand: mixed = doubled + c give to (4)
+    (4) result mixed * 3
+
+local first = 10
+local second = 20
+local third = 5
+
+local answer = get stand_beast(first, second, third)
+
+if answer == 195 then
+    vga_print("STAND BEAST PASSED")
+else
+    vga_print("STAND BEAST FAILED")
+end
+
+halt()
+```
+
+Expected calculation:
+
+```text
+base    = 10 + 20 = 30
+doubled = 30 * 2  = 60
+mixed   = 60 + 5  = 65
+result  = 65 * 3  = 195
+```
+
+Confirmed compiler behavior:
+
+- parsing succeeds
+- semantic analysis succeeds
+- three stack slots are allocated
+- the stack frame is aligned to 32 bytes
+- the result is returned through `rax`
+- unsafe dependent step wrappers are omitted
+- NASM assembly succeeds
+- flat x64 binary generation succeeds
 
 ---
 
 ## Function Steps
 
-Functions can contain numbered steps:
+Functions use numbered steps.
 
 ```sl
 create boot()
-    (1) vga_print("stage 1")
-    (2) vga_print("stage 2")
+    (1) vga_clear()
+    (2) vga_print("Sentinel online")
 ```
 
-A full function call:
+Step numbers must be ascending.
+
+Valid:
 
 ```sl
-start boot()
+create example()
+    (1) print("one")
+    (3) print("three")
+    (8) print("eight")
 ```
 
-A step call:
-
-```sl
-start boot(2)
-```
-
-Important:
-
-```text
-start func(1)
-```
-
-means:
-
-```text
-call step (1)
-```
-
-It does **not** mean:
-
-```text
-pass integer value 1
-```
-
-To pass numeric data, declare storage first:
-
-```sl
-local amount = 1
-
-create add_one(x)
-    (1) vga_print("called")
-
-start add_one(amount)
-```
-
-Parameterized step-calls are blocked in `v0.5-alpha` because step labels do not prepare function argument registers.
-
----
-
-## Mutation With redo
-
-Simple mutation:
-
-```sl
-local counter = 0
-
-redo: counter to counter + 1
-```
-
-Bitwise operations:
-
-```sl
-redo: flags bit_and 1
-redo: mask bit_or 4
-redo: state bit_xor 2
-```
-
-Shift operations:
-
-```sl
-redo: memory_score shift_left 3
-redo: device_mask shift_right 1
-```
-
-`v0.5-alpha` fixes the x64 NASM generation for `shift_left` and `shift_right`.
-
-The compiler now emits valid shift counts:
-
-```asm
-shl rbx, 3
-```
-
-or:
-
-```asm
-shl rbx, cl
-```
-
-instead of invalid register combinations.
-
----
-
-## lib(std)
-
-`lib(std)` enables the first built-in OSDev helper layer.
-
-```sl
-lib(std)
-x64
-type(console)
-```
-
-Current rule:
-
-```text
-lib(std) is x64-only in v0.5-alpha.
-```
+Gaps are allowed.
 
 Invalid:
 
 ```sl
-lib(std)
-x16
-
-halt()
+create example()
+    (2) print("two")
+    (1) print("one")
 ```
 
 Expected diagnostic:
 
 ```text
-[SEMANTIC S026] `lib(std)` currently supports x64 mode only.
+[SEMANTIC S031]
 ```
 
-Current `lib(std)` commands:
+Duplicate steps remain invalid:
 
-| Command | Kind | Purpose |
-| :--- | :--- | :--- |
-| `vga_print(value)` | statement | Print text/value using VGA-style output |
-| `vga_clear()` | statement | Clear VGA text output |
-| `nop()` | statement | Emit `nop` |
-| `halt()` | statement | Emit halt behavior |
-| `io_wait()` | statement | Emit I/O wait |
-| `read_port(port)` | expression | Read byte from I/O port |
-| `write_port(port, value)` | statement | Write byte to I/O port |
-| `pic_eoi()` | statement | Send PIC end-of-interrupt |
-| `irq_disable()` | statement | Emit `cli` |
-| `irq_enable()` | statement | Emit `sti` |
-
-Example:
-
-```sl
-lib(std)
-x64
-type(console)
-
-local keyboard_status_port = 0x64
-local key_status = 0
-local key_ready = 0
-
-create keyboard_poll()
-    (1) redo: key_status to read_port(keyboard_status_port)
-    (2) redo: key_ready to key_status
-    (3) redo: key_ready bit_and 1
-
-start keyboard_poll()
-halt()
+```text
+[SEMANTIC S018]
 ```
 
 ---
 
-## x16 Bootloader Path
+## Function Declaration Order
 
-Sentinel still supports an experimental x16 boot-sector style path separately from `lib(std)`.
+Functions must be declared before use.
+
+Valid:
+
+```sl
+create boot()
+    (1) print("boot")
+
+start boot()
+```
+
+Invalid:
+
+```sl
+start boot()
+
+create boot()
+    (1) print("boot")
+```
+
+Expected diagnostic:
+
+```text
+[SEMANTIC S027]
+```
+
+This applies to both `start` and `get`.
+
+---
+
+## Function Parameters
+
+Current experimental x64 parameter mapping:
+
+| Argument | Register |
+| :--- | :--- |
+| 1 | `rdi` |
+| 2 | `rsi` |
+| 3 | `rdx` |
+| 4 | `rcx` |
+| 5 | `r8` |
+| 6 | `r9` |
+
+Parameters are temporary input names.
+
+They are not persistent storage and cannot be mutated directly:
+
+```sl
+create test(value)
+    (1) redo: value to value + 1
+```
+
+Expected diagnostic:
+
+```text
+[SEMANTIC S007]
+```
+
+Use a stand value instead:
+
+```sl
+create test(value)
+    (1) stand: changed = value + 1
+```
+
+---
+
+## lib(std)
+
+`lib(std)` enables built-in OSDev-oriented commands.
+
+### x64 Commands
+
+| Command | Purpose |
+| :--- | :--- |
+| `vga_print(value)` | Print through VGA text output |
+| `vga_clear()` | Clear VGA text output |
+| `halt()` | Emit a safe halt loop |
+| `nop()` | Emit `nop` |
+| `panic(value)` | Print panic information and halt |
+| `io_wait()` | Perform an I/O delay |
+| `read_port(port)` | Read one byte from an I/O port |
+| `write_port(port, value)` | Write one byte to an I/O port |
+| `pic_eoi()` | Send PIC end-of-interrupt |
+| `irq_disable()` | Emit `cli` |
+| `irq_enable()` | Emit `sti` |
+
+### x16 Subset
+
+The current x16 subset contains:
+
+```text
+halt
+nop
+vga_clear
+vga_print
+```
+
+Unsupported commands are rejected before NASM.
 
 Example:
 
 ```sl
 custing(silk)
+lib(std)
 x16
 
-local msg = "Hello from Bootloader!"
-
-create boot()
-    (1) print(msg)
-    (2) low-code:
-            cli
-            halt
-
-start boot()
+write_port(0x20, 0x20)
 ```
 
-The x16 path can emit boot-sector style output such as:
+Expected diagnostic:
+
+```text
+[SEMANTIC S026]
+std command `write_port` is not supported in x16 mode.
+```
+
+---
+
+## x16 Boot Sector
+
+Confirmed bootable example:
+
+```sl
+custing(silk)
+lib(std)
+x16
+type(console)
+
+create boot()
+    (1) vga_clear()
+    (2) vga_print("Sentinel v0.6 boot passed")
+
+start boot()
+halt()
+```
+
+Generated direction:
 
 ```asm
 BITS 16
 ORG 0x7C00
 ```
 
-and boot signature layout.
+The generated boot sector contains:
 
-Important:
+```asm
+times 510-($-$$) db 0
+dw 0xAA55
+```
+
+Confirmed result:
 
 ```text
-lib(std) is not currently supported in x16.
+Binary size: 512 bytes
+Boot signature: 0xAA55
+QEMU execution: passed
+BIOS text output: passed
 ```
 
 ---
 
-## Kernel Beast Test
+## Important x64 Boot Limitation
 
-`v0.5-alpha` introduces the Kernel Beast Test as the main stress test.
-
-The test is a large kernel-style Sentinel program covering:
-
-- `lib(std)`
-- VGA output
-- IRQ helpers
-- PIC helpers
-- port I/O
-- arrays
-- indexing
-- loops
-- nested conditionals
-- function calls
-- six-argument function pressure
-- bitwise operations
-- shift operations
-- kernel-style boot sequencing
-
-Result:
+Sentinel can generate a separate x64 kernel binary:
 
 ```text
-Kernel Beast Test v0.5-alpha: Passed
+kernel.sl -> kernel.asm -> kernel.bin
 ```
 
-This test proves that Sentinel can compile a larger kernel-style source file into NASM and flat binary output without relying on fake output or pseudo-code.
+However, the current x16 bootloader does not yet:
+
+- load `kernel.bin` from disk
+- place it at its expected memory address
+- create a GDT
+- create page tables
+- enter protected mode
+- enter long mode
+- transfer control to the x64 `_start`
+
+Simply combining binaries does not perform these operations.
+
+```text
+bootloader.bin + kernel.bin != complete boot chain
+```
+
+A proper loader remains future work.
+
+The old experimental source-level protocol using:
+
+```sl
+receive("bootloader.sl")
+give("kernel.sl")
+x16 goto x32
+```
+
+has been removed.
+
+The current `give` keyword is used only for stand transfer:
+
+```sl
+stand: value = expression give to (2)
+```
 
 ---
 
 ## Semantic Diagnostics
 
-Sentinel rejects many broken programs before NASM.
-
-Current semantic diagnostics include:
+Current diagnostics include:
 
 | Code | Meaning |
 | :--- | :--- |
-| `S001` | Reserved keyword used as name |
+| `S001` | Reserved keyword used as a name |
 | `S002` | Duplicate function |
-| `S003` | Duplicate storage |
+| `S003` | Duplicate persistent storage |
 | `S004` | Duplicate parameter |
 | `S005` | Parameter conflicts with storage |
-| `S006` | Reserved / legacy conflict slot |
-| `S007` | Cannot redo parameter directly |
-| `S008` | Cannot modify unknown storage |
+| `S007` | Parameter mutated directly |
+| `S008` | Unknown mutation target |
 | `S009` | Unknown function |
 | `S010` | Recursive call unsupported |
-| `S011` | `local` inside function blocked |
+| `S011` | Function-local `local` blocked |
 | `S012` | Missing function step |
 | `S013` | Invalid redo target |
 | `S014` | Storage conflicts with function |
 | `S015` | Unknown storage symbol |
-| `S016` | Mixed step selectors and arguments |
+| `S016` | Step selectors mixed with arguments |
 | `S017` | Wrong argument count |
-| `S018` | Duplicate function step |
-| `S019` | FREERAM unknown storage |
-| `S020` | Unsafe step-call on parameterized function |
+| `S018` | Duplicate numbered step |
+| `S019` | Unknown FREERAM target |
+| `S020` | Unsafe parameterized step call |
 | `S021` | Unknown library |
-| `S022` | std command/expression used without `lib(std)` |
+| `S022` | std used without `lib(std)` |
 | `S023` | Unknown std command |
-| `S024` | Wrong std command argument count |
-| `S025` | Reserved / legacy dynamic port restriction |
-| `S026` | `lib(std)` used outside supported mode |
+| `S024` | Wrong std argument count |
+| `S026` | std command unsupported by target |
 | `S027` | Function called before declaration |
+| `S028` | `get` used on function without result |
+| `S029` | `result` used outside function |
+| `S030` | Invalid result position |
+| `S031` | Function steps are not ascending |
+| `S032` | Invalid stand declaration position |
+| `S033` | Duplicate stand name |
+| `S034` | Invalid or missing stand target |
+| `S035` | Stand name conflict |
+| `S036` | Stand value unavailable |
+| `S037` | stand used outside x64 |
 
-Example diagnostic:
+Unknown characters are also rejected:
+
+```sl
+local value = 10 @ 20
+```
+
+Result:
 
 ```text
-[SEMANTIC S027] Function `boot` is called before declaration.
+[PARSE ERROR] Unknown character `@`
+```
 
-Details:
-  - Function `boot` is declared later in the file.
-  - Sentinel v0.5-alpha requires functions to be declared before use.
+---
 
-Possible fixes:
-  1. Move `create boot(...)` above this call.
-  2. Or move this call below the function declaration.
+## Validation Status
+
+| Test | Result |
+| :--- | :--- |
+| Kernel Beast | Passed |
+| Stand Beast compilation | Passed |
+| x16 boot sector compilation | Passed |
+| x16 QEMU boot | Passed |
+| x64 regression compilation | Passed |
+| Unknown character rejection | Passed |
+| Unsupported x16 std rejection | Passed |
+| Missing stand target rejection | Passed |
+| Direct dependent-step rejection | Passed |
+| x16 stand rejection | Passed |
+
+Important distinction:
+
+```text
+x64 code generation is tested through NASM compilation.
+Direct x64 QEMU execution still requires a long-mode loader.
 ```
 
 ---
@@ -601,32 +813,34 @@ Possible fixes:
 
 | Feature | Status | Notes |
 | :--- | :--- | :--- |
-| Lexer | Working | Current alpha compiler |
-| Parser | Working | Supports current syntax |
-| AST | Working | Internal compiler model |
-| Semantic analyzer | Working | Rejects many invalid programs before NASM |
+| Lexer | Working | Unknown characters rejected |
+| Parser | Working | Current v0.6 syntax |
+| AST | Working | Includes stand/result nodes |
+| Semantic analyzer | Working | Diagnostics through S037 |
 | NASM codegen | Working | Main backend |
-| Optimizer | Basic | Early simple optimizer |
+| Optimizer | Basic | Early peephole passes |
 | Flat binary output | Working | Through NASM |
-| `x64` | Main tested mode | Strongest path |
-| `x32` | Experimental | Not main focus |
-| `x16` | Experimental | Boot-sector path |
-| `type(console)` | Working | Main output style |
-| `local` | Working | Flat storage |
+| x64 | Main target | Strongest compiler path |
+| x16 | Working experimental path | Boot sectors and small std subset |
+| x32 | Incomplete | Planned for later work |
+| `local` | Working | Persistent flat storage |
+| `stand` | Working | x64 temporary stack storage |
+| `give` | Working | Forward step transfer |
 | `redo` | Working | Mutation |
 | `create` | Working | Function declaration |
-| `start` | Working | Function/step call |
-| `get result()` | Experimental | Result path |
-| `if / else / end` | Working | Current conditional syntax |
-| `while` | Working | Loop support |
-| `repeat` | Working | Loop support |
-| Arrays | Working | Basic indexing tested |
-| Structs | Experimental | Not main focus |
-| `try/catch` | Syntax-level / experimental | Not full exception system |
-| `lib(std)` | Working | x64-only |
-| Port I/O | Working | Through `read_port` / `write_port` |
-| IRQ helpers | Working | `cli`, `sti`, `pic_eoi` |
-| Kernel Beast Test | Passed | v0.5-alpha stress test |
+| `start` | Working | Function and safe step calls |
+| `get` | Working | Function result retrieval |
+| `result` | Working | Final function result |
+| Conditions | Working | `if / else / end` |
+| Loops | Working | `while` and `repeat` |
+| Arrays | Basic | No bounds checking |
+| Structs | Experimental | Not a current focus |
+| `try/catch` | Experimental | Not a complete exception runtime |
+| `lib(std)` x64 | Working | Main OSDev command set |
+| `lib(std)` x16 | Minimal | Four-command subset |
+| Port I/O | x64 | `read_port` / `write_port` |
+| IRQ helpers | x64 | CLI, STI, PIC EOI |
+| x64 boot chain | Missing | Required for direct kernel execution |
 
 ---
 
@@ -634,56 +848,68 @@ Possible fixes:
 
 | Area | Limitation |
 | :--- | :--- |
-| `lib(std)` | x64-only |
+| x64 boot | No complete long-mode loader |
+| x32 | Backend incomplete |
+| x16 | Small std subset |
+| `stand` | x64-only |
+| Stand typing | Automatic scalar-sized slots |
 | Type system | Incomplete |
-| Memory safety | Not implemented |
-| Return values | No stable explicit `return` model |
-| `get result()` | Experimental |
-| Strings | No full string system |
+| Memory safety | Incomplete |
+| Recursion | Unsupported |
+| Function-local `local` | Forbidden; use `stand` |
+| Function arguments | First six x64 register arguments |
+| Strings | No complete string runtime |
 | Arrays | No bounds checking |
 | Structs | Experimental |
-| Exceptions | `try/catch` is not a full runtime exception system |
-| Optimizer | Basic only |
-| Package ecosystem | Planned for `v0.6-alpha` |
-| Library Hub | Planned for `v0.6-alpha` |
-| Driver stack | Future work |
-| Networking | Future work |
-| Self-hosting | Long-term goal |
+| Exceptions | Experimental |
+| Optimizer | Basic |
+| ABI | Experimental |
+| Graphics | VGA text helpers only |
+| Filesystems | Not implemented |
+| Networking | Not implemented |
+| Driver framework | Not implemented |
+| Library ecosystem | Not released |
+| Self-hosting | Not implemented |
 
 ---
 
 ## Why Sentinel Exists
 
-Sentinel exists to explore a specific idea:
+Sentinel explores one primary question:
 
 ```text
-Can OSDev code be more readable without hiding the machine?
+Can OSDev code become easier to read and faster to write
+without hiding the machine?
 ```
 
-The goal is not to replace C, C++, Rust, or assembly everywhere.
-
-C and C++ still have:
+C, C++, Rust, Zig, and assembly already have:
 
 - mature compilers
-- large ecosystems
-- decades of tooling
-- powerful optimizers
-- existing OSDev knowledge
+- stronger optimizers
+- larger ecosystems
+- established ABI support
+- extensive OSDev knowledge
+- real production use
 
-Sentinel is much younger and much smaller.
+Sentinel is much younger.
 
-But Sentinel can still be useful in a narrow area:
+Its current strengths are narrower:
 
-- readable boot/kernel prototypes
-- explicit NASM-backed output
+- readable low-level syntax
+- explicit numbered execution stages
 - semantic diagnostics before NASM
-- simple OSDev helper commands
-- inspectable low-level compilation
-- fast experimental kernel-style coding
+- inspectable generated assembly
+- built-in OSDev commands
+- explicit persistent versus temporary state
+- fast kernel and bootloader prototyping
 
-Sentinel does not replace C++ everywhere.
+Sentinel is not currently better than mature systems languages in every area.
 
-Sentinel can bite above its weight class in OSDev experiments.
+It is attempting to become unusually effective in one area:
+
+```text
+Fast, readable, explicit OSDev experimentation.
+```
 
 ---
 
@@ -693,94 +919,89 @@ Sentinel can bite above its weight class in OSDev experiments.
 | :--- | :--- | :--- |
 | `v0.1-alpha` | Completed | Compiler foundation |
 | `v0.2-alpha` | Completed | Working x64 compiler core |
-| `v0.3-alpha` | Completed | Core hardening and semantic diagnostics |
-| `v0.4-alpha-stable` | Completed | First `lib(std)` OSDev command pack |
-| `v0.5-alpha` | Current | Kernel Toolkit Preview / Kernel Beast hardening |
-| `v0.6-alpha` | Planned | Library ecosystem alpha |
-| `v0.7-alpha` | Planned | Optimizer / ASM slimming |
-| `v0.7.1-alpha` | Planned | Advanced TOP optimization pass |
-| `v0.8-alpha` | Planned | Playground and tooling |
-| `v0.9-beta` | Planned | Stability, tests, and documentation hardening |
-| `v1.0` | Future | Stable experimental OSDev-first core |
+| `v0.3-alpha` | Completed | Semantic diagnostics and hardening |
+| `v0.4-alpha-stable` | Completed | First built-in std command pack |
+| `v0.5-alpha` | Completed | Kernel Toolkit Preview and Kernel Beast |
+| `v0.6-alpha` | Current | Core Language Completion and stand/give |
+| `v0.6.1-alpha` | Planned | v0.6 fixes and library ecosystem foundation |
+| `v0.7-alpha` | Planned | x32 backend and optimizer foundation |
+| `v0.7.1-alpha` | Planned | Targeted Output Pruning |
+| `v0.8-alpha` | Planned | Tooling and playground |
+| `v0.9-beta` | Planned | Tests, ABI, stability, and documentation |
+| `v1.0-beta` | Future | Stable experimental OSDev-first platform |
+
+Potential future library families:
+
+```text
+graphics
+files
+BTK
+syler
+```
+
+These are architectural directions, not current built-in libraries.
 
 ---
 
-## v0.6-alpha Direction
+## Next Technical Boundary
 
-`v0.6-alpha` is planned as the Library Ecosystem Alpha.
+The next major technical boundary is not another syntax command.
 
-Planned direction:
-
-- public library authoring specification
-- one library = one GitHub repository
-- GitHub stars as the first rating signal
-- `sentinel-lib.json` manifest
-- optional `.sentinel_lib_graph` visual metadata
-- static Library Hub preview
-- `Official`, `Approved`, `Community`, `Experimental`, `Unsafe`, and `Deprecated` statuses
-- review candidate threshold based on GitHub stars
-- website-based library package generator
-
-Important:
+It is a complete x64 boot chain:
 
 ```text
-5 stars does not mean automatic approval.
-5 stars means review candidate.
+BIOS
+  |
+  v
+x16 boot sector
+  |
+  v
+Load kernel from disk
+  |
+  v
+Protected mode
+  |
+  v
+Page tables
+  |
+  v
+Long mode
+  |
+  v
+x64 Sentinel kernel
 ```
 
-Approval should still depend on:
+After that boundary, Sentinel can begin demonstrating:
 
-- valid manifest
-- clear license
-- readable code
-- working examples
-- tests
-- documented unsafe behavior
-- supported Sentinel version
-- documented register clobbers where relevant
-
----
-
-## v0.7-alpha Direction
-
-`v0.7-alpha` is planned as the first real optimizer milestone.
-
-Possible optimizer targets:
-
-- unused step-label elimination
-- string literal deduplication
-- used-runtime-helper emission
-- label cleanup
-- simple peephole optimization
-- fewer unnecessary stack operations
-- smaller generated NASM
-
-`v0.7.1-alpha` may become the advanced TOP optimization pass:
-
-```text
-TOP = Targeted Output Pruning
-```
+- real x64 QEMU kernel execution
+- framebuffer graphics
+- keyboard-driven programs
+- rotating wireframe models
+- interrupts and driver experiments
+- library-based OS development
 
 ---
 
 ## Project Position
 
-Sentinel is alpha software.
+Sentinel remains alpha software.
 
 The compiler is experimental.
 
-The backend is private.
+The compiler backend is private.
 
-The ecosystem is early.
+The public repository contains documentation, status information, test reports, the project roadmap, and the GitHub Pages wiki.
 
-The generated output should be inspected.
+Generated output should still be inspected.
 
-The language is not production-ready.
-
-Current best use:
+Current best uses:
 
 ```text
-OSDev experiments, bootloader tests, kernel-style prototypes, compiler research.
+OSDev experiments
+boot-sector programs
+kernel-style prototypes
+compiler architecture research
+NASM-backed low-level code generation
 ```
 
 ---
@@ -793,21 +1014,35 @@ See `LICENSE`.
 
 ## Final Summary
 
-Sentinel `v0.5-alpha` is a kernel-toolkit hardening milestone.
+Sentinel `v0.6-alpha` completes the first version of the core function data-flow model.
 
-It keeps the transparent `.sl → NASM → flat binary` model, strengthens the x64 OSDev path, fixes shift code generation, adds stricter function declaration rules, and proves the current compiler core through a larger Kernel Beast stress test.
+It introduces:
 
-Sentinel is still early, but it now has:
+- persistent storage through `local`
+- temporary function storage through `stand`
+- explicit transfer through `give`
+- mutation through `redo`
+- final values through `result`
+- result retrieval through `get`
+- target-aware std validation
+- stronger semantic diagnostics
+- safer x64 stack-frame generation
 
-- readable low-level syntax
-- explicit NASM-backed output
-- semantic diagnostics before NASM
-- working x64 `lib(std)` helpers
-- flat storage discipline
-- stricter function order rules
-- a passed kernel-style stress test
+Sentinel now has:
+
+- a working compiler pipeline
+- readable NASM output
+- flat binary generation
+- a working x16 boot-sector path
+- a strong x64 code-generation path
+- built-in OSDev commands
+- Kernel Beast regression coverage
+- Stand Beast validation
+- explicit temporary function state
+
+It is still incomplete, but it is no longer only a syntax experiment.
 
 ```text
 Sentinel Lang
-OSDev-first. NASM-backed. Experimental.
+OSDev-first. NASM-backed. Explicit by design.
 ```
