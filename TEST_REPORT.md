@@ -1,80 +1,31 @@
 # Sentinel Lang Test Report
 
-**Version:** `v0.5-alpha`  
+**Version:** `v0.6-alpha`  
 **Status:** Passed current alpha validation  
-**Milestone:** Kernel Toolkit Preview  
+**Milestone:** Core Language Completion  
+**Test date:** September 1, 2026  
 **Main target:** `x64`  
-**Main focus:** kernel-style stress testing, compiler hardening, and semantic validation
+**Boot target:** `x16`  
+**Main focus:** stand/give validation, x64 regression testing, x16 boot validation, and semantic hardening
 
 ---
 
 ## Summary
 
-Sentinel `v0.5-alpha` passed the current compiler and language validation set.
+Sentinel `v0.6-alpha` passed the current compiler-level validation set.
 
-This release builds on `v0.4-alpha-stable`.
+This release builds on:
 
-`v0.4-alpha-stable` introduced the first working `lib(std)` OSDev helper pack.
+- `v0.4-alpha-stable` built-in OSDev commands
+- `v0.5-alpha` Kernel Beast hardening
+- the established x64 NASM pipeline
+- the experimental x16 boot-sector pipeline
 
-`v0.5-alpha` focuses on proving that the existing x64 OSDev path can survive a larger kernel-style stress test.
-
-Main result:
-
-```text
-Kernel Beast Test v0.5-alpha: Passed
-```
-
-This report records:
-
-- parser stability
-- semantic diagnostics
-- function and storage validation
-- x64 register preservation
-- `lib(std)` command validation
-- port I/O command generation
-- IRQ helper generation
-- shift operation codegen fixes
-- stricter function declaration order
-- large kernel-style stress-test compilation
-
----
-
-## Current Result
-
-| Area | Result |
-| :--- | :--- |
-| **Lexer** | Passed |
-| **Parser** | Passed |
-| **AST generation** | Passed |
-| **Semantic analyzer** | Passed |
-| **Code generation** | Passed |
-| **NASM assembly output** | Passed |
-| **Flat binary pipeline** | Passed |
-| **x64 console mode** | Passed |
-| **v0.3 core hardening tests** | Passed |
-| **v0.4 std tests** | Passed |
-| **v0.5 Kernel Beast Test** | Passed |
-| **v0.5 declaration-order tests** | Passed |
-| **v0.5 shift codegen tests** | Passed |
-
-Current status:
+The main `v0.6-alpha` question was:
 
 ```text
-Sentinel v0.5-alpha code core is ready for the current alpha milestone.
-```
-
----
-
-## v0.5-alpha Main Validation Result
-
-`v0.5-alpha` is not a large new feature release.
-
-It is a hardening milestone.
-
-The main validation goal was:
-
-```text
-Can Sentinel compile a larger kernel-style OSDev program through the current x64 pipeline?
+Can Sentinel support temporary function-local values
+without converting local into hidden scoped storage?
 ```
 
 Result:
@@ -83,387 +34,461 @@ Result:
 Yes.
 ```
 
-The Kernel Beast Test compiled successfully after the `shift_left` / `shift_right` codegen issue was fixed.
+The implemented model is:
+
+```text
+local = persistent flat storage
+stand = temporary function storage
+give  = explicit step transfer
+result = final function value
+get = result retrieval
+```
+
+Main validation results:
+
+```text
+Stand Beast: Passed compiler and NASM validation
+x64 regression: Passed
+x16 boot sector: Passed
+x16 QEMU boot: Passed
+```
 
 ---
 
-## v0.5-alpha Additions Tested
+## Validation Scope
 
-| Addition / Rule | Result |
+This report covers:
+
+- lexer behavior
+- parser behavior
+- AST generation
+- semantic analysis
+- stand stack allocation
+- give target validation
+- result/get behavior
+- function parameter behavior
+- dependent-step protection
+- target-specific std validation
+- unknown character rejection
+- generated NASM inspection
+- flat binary generation
+- x16 QEMU boot execution
+- previous Kernel Beast regression coverage
+
+---
+
+## Current Result
+
+| Area | Result |
 | :--- | :--- |
-| Kernel Beast stress test | Passed |
-| `shift_left` x64 codegen fix | Passed |
-| `shift_right` x64 codegen fix | Passed |
-| `S027` forward `start` rejection | Passed |
-| `S027` forward `get` rejection | Passed |
-| Valid ordered function calls | Passed |
-| Top-level `local` after function declaration | Passed |
-| Function-local `local` rejection | Passed |
-| `lib(std)` x64-only behavior | Preserved |
-| Large x64 NASM output | Passed |
+| Lexer | Passed |
+| Parser | Passed |
+| AST generation | Passed |
+| Semantic analyzer | Passed |
+| x64 code generation | Passed |
+| x16 code generation | Passed |
+| NASM assembly | Passed |
 | Flat binary generation | Passed |
+| Basic optimizer | Passed current use |
+| Kernel Beast regression | Passed |
+| Stand Beast | Passed |
+| x64 regression source | Passed |
+| x16 boot sector | Passed |
+| x16 QEMU execution | Passed |
+| Negative semantic tests | Passed |
+
+Current conclusion:
+
+```text
+Sentinel v0.6-alpha is ready for the current alpha milestone.
+```
 
 ---
 
-## Kernel Beast Test
+# Primary v0.6 Tests
 
-The Kernel Beast Test is the main `v0.5-alpha` stress test.
+## Stand Beast Test
 
-It is a large kernel-style Sentinel source file that exercises the current OSDev path.
+The Stand Beast Test is the primary `v0.6-alpha` positive stress test.
 
-Covered features:
+Source:
+
+```sl
+lib(std)
+x64
+type(console)
+
+create stand_beast(a, b, c)
+    (1) stand: base = a + b give to (2)
+    (2) stand: doubled = base * 2 give to (3)
+    (3) stand: mixed = doubled + c give to (4)
+    (4) result mixed * 3
+
+local first = 10
+local second = 20
+local third = 5
+
+local answer = get stand_beast(first, second, third)
+
+if answer == 195 then
+    vga_print("STAND BEAST PASSED")
+else
+    vga_print("STAND BEAST FAILED")
+end
+
+halt()
+```
+
+Expected calculation:
+
+```text
+base = 10 + 20
+base = 30
+
+doubled = 30 * 2
+doubled = 60
+
+mixed = 60 + 5
+mixed = 65
+
+result = 65 * 3
+result = 195
+```
+
+Result:
+
+```text
+Passed
+```
+
+Confirmed behavior:
+
+- source tokenization succeeded
+- parsing succeeded
+- AST construction succeeded
+- semantic analysis succeeded
+- three stand values were accepted
+- stand transfers were accepted
+- `get` was accepted inside a `local` initializer
+- x64 stack slots were generated
+- the stand frame was aligned
+- the result remained in `rax`
+- the result was stored in `answer`
+- NASM assembly succeeded
+- flat binary generation succeeded
+
+---
+
+## Stand Beast Stack Frame
+
+Expected stand layout:
+
+```text
+base    -> [rbp-8]
+doubled -> [rbp-16]
+mixed   -> [rbp-24]
+```
+
+Observed generated direction:
+
+```asm
+push rbp
+mov  rbp, rsp
+sub  rsp, 32
+```
+
+Observed stand stores:
+
+```asm
+mov  [rbp-8], rax
+mov  [rbp-16], rax
+mov  [rbp-24], rax
+```
+
+Observed cleanup:
+
+```asm
+add  rsp, 32
+pop  rbp
+ret
+```
+
+Result:
+
+```text
+Passed
+```
+
+---
+
+## Stand Wrapper Elimination
+
+Test purpose:
+
+```text
+Verify that stand-dependent steps do not expose
+unsafe independent assembly entry points.
+```
+
+For the Stand Beast function, step `(1)` may receive an independent wrapper.
+
+Steps `(2)`, `(3)`, and `(4)` require stand values from previous steps.
+
+Observed output:
+
+```asm
+; step wrapper sl_func_stand_beast_L2 skipped:
+; requires incoming stand values
+
+; step wrapper sl_func_stand_beast_L3 skipped:
+; requires incoming stand values
+
+; step wrapper sl_func_stand_beast_L4 skipped:
+; requires incoming stand values
+```
+
+Result:
+
+```text
+Passed
+```
+
+---
+
+## Basic stand/get Test
+
+Source:
+
+```sl
+lib(std)
+x64
+type(console)
+
+create calculate(a, b)
+    (1) stand: temporary = a + b give to (2)
+    (2) result temporary * 2
+
+local left = 10
+local right = 20
+local answer = get calculate(left, right)
+
+vga_print("stand compiled")
+halt()
+```
+
+Expected result:
+
+```text
+answer = 60
+```
+
+Observed code-generation direction:
+
+```asm
+mov  [rbp-8], rax
+mov  rax, [rbp-8]
+imul rax, rbx
+mov  [sl_var_answer], rax
+```
+
+Result:
+
+```text
+Passed
+```
+
+---
+
+# x64 Regression Tests
+
+## x64 Core Regression
+
+Test purpose:
+
+```text
+Verify that v0.6 stand changes did not break the older
+local, redo, start, get, result, condition, and std paths.
+```
+
+Source:
+
+```sl
+lib(std)
+x64
+type(console)
+
+local counter = 10
+local left = 7
+local right = 5
+
+create update_counter()
+    (1) redo: counter to counter + 5
+    (2) vga_print("counter updated")
+
+create calculate(a, b)
+    (1) result (a + b) * 2
+
+start update_counter()
+
+local answer = get calculate(left, right)
+
+if counter == 15 and answer == 24 then
+    vga_print("X64 REGRESSION PASSED")
+else
+    vga_print("X64 REGRESSION FAILED")
+end
+
+halt()
+```
+
+Expected values:
+
+```text
+counter = 15
+answer = 24
+```
+
+Compilation result:
+
+```text
+Passed
+```
+
+Observed flat binary size during validation:
+
+```text
+526 bytes
+```
+
+Validated areas:
+
+- persistent `local`
+- `redo`
+- side-effect function through `start`
+- value function through `get`
+- x64 parameters
+- final `result`
+- arithmetic expressions
+- logical condition
+- VGA output
+- safe halt loop
+
+---
+
+## Kernel Beast Regression
+
+The Kernel Beast remains the main large x64 regression inherited from `v0.5-alpha`.
+
+Covered areas:
 
 - `lib(std)`
 - `x64`
 - `type(console)`
 - VGA output
 - IRQ helpers
-- PIC helpers
+- PIC EOI
 - port I/O
 - arrays
 - indexing
 - loops
-- nested conditionals
+- nested conditions
 - function calls
-- six-argument function pressure
+- six-argument register pressure
 - bitwise operations
 - shift operations
-- kernel-style boot sequencing
+- kernel-style sequencing
 
-Test result:
+Result:
 
 ```text
 Passed
 ```
 
-Meaning:
-
-```text
-Sentinel successfully compiled the current kernel-style stress test into NASM and flat binary output.
-```
+The test confirms that `v0.6-alpha` development did not intentionally replace the previous x64 core model.
 
 ---
 
-## Kernel Beast Coverage
+## x64 Shift Regression
 
-| Area | Covered | Result |
-| :--- | :--- | :--- |
-| Boot banner flow | Yes | Passed |
-| VGA initialization | Yes | Passed |
-| IRQ enable / disable | Yes | Passed |
-| PIC EOI flow | Yes | Passed |
-| Keyboard port reads | Yes | Passed |
-| Memory scoring logic | Yes | Passed |
-| Device mask logic | Yes | Passed |
-| Scheduler loop | Yes | Passed |
-| Array indexing | Yes | Passed |
-| Six-argument function call | Yes | Passed |
-| Nested verification chain | Yes | Passed |
-| Keyboard polling loop | Yes | Passed |
-| Final report flow | Yes | Passed |
-| `halt()` ending | Yes | Passed |
-
----
-
-## v0.5 Codegen Bug Found And Fixed
-
-During `v0.5-alpha` development, the Kernel Beast Test exposed a real NASM codegen bug.
-
-Problem:
-
-```text
-shift_left / shift_right generated an invalid x64 shift operand combination.
-```
-
-Invalid generated pattern:
+Previously invalid generated form:
 
 ```asm
 shl rbx, rax
 ```
 
-Why invalid:
-
-```text
-x86/x64 shift counts may be immediate values or CL.
-They cannot use RAX directly as the shift count.
-```
-
-Valid patterns:
+Valid forms:
 
 ```asm
 shl rbx, 3
 ```
-
-or:
 
 ```asm
 shl rbx, cl
 ```
 
-Fix result:
+Current result:
 
 ```text
-shift_left / shift_right now emit valid NASM shift operands.
-```
-
-Test result:
-
-```text
-Passed
+Passed existing regression validation
 ```
 
 ---
 
-## v0.5 Function Declaration Order
+# x16 Tests
 
-`v0.5-alpha` adds a stricter function declaration rule.
+## x16 Boot-Sector Compilation
 
-Rule:
-
-```text
-Functions must be declared before start/get calls that reference them.
-```
-
-Valid:
+Source:
 
 ```sl
+custing(silk)
 lib(std)
-x64
+x16
 type(console)
 
 create boot()
-    (1) vga_print("boot")
+    (1) vga_clear()
+    (2) vga_print("Sentinel v0.6 boot passed")
 
 start boot()
 halt()
 ```
 
-Invalid:
-
-```sl
-lib(std)
-x64
-type(console)
-
-start boot()
-
-create boot()
-    (1) vga_print("boot")
-
-halt()
-```
-
-Expected diagnostic:
+Expected generated properties:
 
 ```text
-[SEMANTIC S027] Function `boot` is called before declaration.
+BITS 16
+ORG 0x7C00
+512-byte output
+0xAA55 signature
 ```
 
-Test result:
+Observed result:
 
 ```text
-Passed
+NASM: Passed
+Binary generation: Passed
+Binary size: 512 bytes
 ```
 
 ---
 
-## v0.5 Flat Storage Order
-
-`v0.5-alpha` clarifies top-level storage ordering.
-
-Rule:
-
-```text
-local declarations may appear anywhere at top-level.
-```
-
-Valid:
-
-```sl
-lib(std)
-x64
-type(console)
-
-create boot()
-    (1) vga_print("boot")
-
-local status = 1
-
-start boot()
-halt()
-```
-
-Reason:
-
-```text
-local declares flat source-file storage.
-It is not function-local storage.
-```
-
-Test result:
-
-```text
-Passed
-```
-
----
-
-## Function-Local local Rejection
-
-Function-local `local` declarations remain forbidden.
-
-Invalid:
-
-```sl
-lib(std)
-x64
-type(console)
-
-create test()
-    (1) local x = 10
-
-start test()
-halt()
-```
-
-Expected diagnostic:
-
-```text
-[SEMANTIC S011] local inside function is not allowed.
-```
-
-Test result:
-
-```text
-Passed
-```
-
----
-
-## v0.3-alpha Regression Status
-
-`v0.5-alpha` keeps the important `v0.3-alpha` hardening behavior.
-
-| Feature | Result |
-| :--- | :--- |
-| Flat storage validation | Passed |
-| Duplicate storage detection | Passed |
-| Unknown storage mutation detection | Passed |
-| Function declaration validation | Passed |
-| Function step validation | Passed |
-| Function argument count validation | Passed |
-| Unsafe parameterized step-call protection | Passed |
-| x64 `rsi` print preservation | Passed |
-
----
-
-## v0.4-alpha-stable Regression Status
-
-`v0.5-alpha` keeps the important `v0.4-alpha-stable` `lib(std)` behavior.
-
-| Feature | Result |
-| :--- | :--- |
-| `lib(std)` syntax | Passed |
-| `lib(std)` semantic validation | Passed |
-| x64-only `lib(std)` guard | Passed |
-| `vga_print()` | Passed |
-| `vga_clear()` | Passed |
-| `nop()` | Passed |
-| `halt()` | Passed |
-| `io_wait()` | Passed |
-| `read_port()` | Passed |
-| `write_port()` | Passed |
-| `pic_eoi()` | Passed |
-| `irq_disable()` | Passed |
-| `irq_enable()` | Passed |
-
----
-
-## Current Semantic Diagnostics Tests
-
-| Code | Purpose | Result |
-| :--- | :--- | :--- |
-| `S001` | Reserved keyword used as name | Passed |
-| `S002` | Duplicate function | Passed |
-| `S003` | Duplicate storage | Passed |
-| `S004` | Duplicate parameter | Passed |
-| `S005` | Parameter conflicts with storage | Passed |
-| `S006` | Reserved / legacy conflict slot | Reserved |
-| `S007` | Cannot redo parameter directly | Passed |
-| `S008` | Cannot modify unknown storage | Passed |
-| `S009` | Unknown function | Passed |
-| `S010` | Recursive call unsupported | Passed |
-| `S011` | `local` inside function blocked | Passed |
-| `S012` | Missing function step | Passed |
-| `S013` | Invalid redo target | Passed |
-| `S014` | Storage conflicts with function | Passed |
-| `S015` | Unknown storage symbol | Passed |
-| `S016` | Mixed step selectors and arguments | Passed |
-| `S017` | Wrong argument count | Passed |
-| `S018` | Duplicate function step | Passed |
-| `S019` | FREERAM unknown storage | Passed |
-| `S020` | Unsafe step-call on parameterized function | Passed |
-| `S021` | Unknown library | Passed |
-| `S022` | std command/expression without `lib(std)` | Passed |
-| `S023` | Unknown std command | Available / defensive |
-| `S024` | Wrong std command argument count | Passed |
-| `S025` | Reserved / legacy dynamic port restriction | Reserved |
-| `S026` | `lib(std)` outside x64 | Passed |
-| `S027` | Function called before declaration | Passed |
-
----
-
-## Current lib(std) Commands
-
-Current `lib(std)` command set:
-
-| Command | Kind | Result |
-| :--- | :--- | :--- |
-| `vga_print(value)` | statement | Passed |
-| `vga_clear()` | statement | Passed |
-| `nop()` | statement | Passed |
-| `halt()` | statement | Passed |
-| `io_wait()` | statement | Passed |
-| `read_port(port)` | expression | Passed |
-| `write_port(port, value)` | statement | Passed |
-| `pic_eoi()` | statement | Passed |
-| `irq_disable()` | statement | Passed |
-| `irq_enable()` | statement | Passed |
-
-Current limitation:
-
-```text
-lib(std) is x64-only in v0.5-alpha.
-```
-
----
-
-## std Smoke Test
+## x16 QEMU Boot
 
 Test purpose:
 
 ```text
-Verify that lib(std) loads and basic std commands compile.
+Verify that the generated x16 boot sector executes through BIOS.
 ```
 
-Source pattern:
+Observed behavior:
 
-```sl
-lib(std)
-x64
-type(console)
-
-vga_print("std online")
-nop()
-halt()
+```text
+QEMU loaded the boot sector.
+The boot program executed.
+Sentinel text appeared on screen.
+The generated halt loop remained active.
 ```
-
-Expected behavior:
-
-- `lib(std)` is accepted.
-- `vga_print()` emits VGA print sequence.
-- `nop()` emits `nop`.
-- `halt()` emits halt behavior.
 
 Result:
 
@@ -471,324 +496,263 @@ Result:
 Passed
 ```
 
----
-
-## std VGA Test
-
-Test purpose:
-
-```text
-Verify vga_print and vga_clear.
-```
-
-Source pattern:
-
-```sl
-lib(std)
-x64
-type(console)
-
-vga_clear()
-vga_print("screen reset")
-halt()
-```
-
-Expected generated behavior:
-
-- VGA memory clear sequence is emitted.
-- Cursor state is reset.
-- String printing preserves `rsi`.
-
-Result:
-
-```text
-Passed
-```
+This is the current directly bootable Sentinel path.
 
 ---
 
-## std IRQ Test
+## x16 std Subset
 
-Test purpose:
+Current supported x16 commands:
 
 ```text
-Verify irq_disable, irq_enable, and pic_eoi.
-```
-
-Source pattern:
-
-```sl
-lib(std)
-x64
-type(console)
-
-vga_print("irq test begin")
-irq_disable()
-nop()
-irq_enable()
-pic_eoi()
-vga_print("irq test done")
-halt()
-```
-
-Expected generated behavior:
-
-```asm
-cli
+vga_print
+vga_clear
+halt
 nop
-sti
-out dx, al
 ```
 
 Result:
 
 ```text
-Passed
+Passed current subset validation
 ```
+
+The full x64 std implementation is not emitted in x16.
 
 ---
 
-## std Port I/O Test
+# Negative Semantic Tests
 
-Test purpose:
+## S026 — Unsupported x16 std Command
 
-```text
-Verify read_port and write_port.
-```
-
-Source pattern:
+Source:
 
 ```sl
+custing(silk)
 lib(std)
-x64
-type(console)
+x16
 
-local keyboard_port = 0x60
-local keyboard_value = 0
-
-redo: keyboard_value to read_port(keyboard_port)
 write_port(0x20, 0x20)
 halt()
 ```
 
-Expected behavior:
+Expected result:
 
-- `read_port()` reads from the requested port.
-- `write_port()` writes byte value to the requested port.
-- helper registers are preserved according to current codegen rules.
+```text
+[SEMANTIC S026]
+std command `write_port` is not supported in x16 mode.
+```
 
-Result:
+Observed result:
 
 ```text
 Passed
 ```
 
----
-
-## Shift Codegen Test
-
-Test purpose:
+Confirmed diagnostic details included the current x16 subset:
 
 ```text
-Verify that shift_left and shift_right generate valid NASM.
+halt
+nop
+vga_clear
+vga_print
 ```
 
-Source pattern:
-
-```sl
-lib(std)
-x64
-type(console)
-
-local memory_score = 2
-local device_mask = 8
-
-redo: memory_score shift_left 3
-redo: device_mask shift_right 1
-
-halt()
-```
-
-Expected generated behavior:
-
-```asm
-shl rbx, 3
-shr rbx, 1
-```
-
-or expression-based shift through `cl`.
-
-Result:
+Importance:
 
 ```text
-Passed
+The compiler rejects unsupported x16 commands before
+x64-only registers can reach BITS 16 NASM output.
 ```
 
 ---
 
-## Forward Start Error Test
+## S034 — Missing stand Target
 
-Test purpose:
-
-```text
-Verify that start cannot call a function before declaration.
-```
-
-Source pattern:
+Source:
 
 ```sl
-lib(std)
 x64
-type(console)
 
-start boot()
-
-create boot()
-    (1) vga_print("bad")
-
-halt()
+create broken_pipeline()
+    (1) stand: temporary = 10 give to (9)
+    (2) result temporary
 ```
 
 Expected result:
 
 ```text
-[SEMANTIC S027] Function `boot` is called before declaration.
+[SEMANTIC S034]
+Stand `temporary` is given to missing step `(9)`.
 ```
 
-Result:
+Observed result:
 
 ```text
 Passed
 ```
 
----
-
-## Forward Get Error Test
-
-Test purpose:
+Observed available-step report:
 
 ```text
-Verify that get cannot call a function before declaration.
+Available steps: 1, 2
 ```
 
-Source pattern:
+---
+
+## S036 — Direct Dependent-Step Call
+
+Source:
 
 ```sl
-lib(std)
 x64
-type(console)
 
-local out = get boot() result()
+create pipeline()
+    (1) stand: temporary = 30 give to (2)
+    (2) result temporary * 2
 
-create boot()
-    (1) vga_print("bad")
-
-halt()
+start pipeline(2)
 ```
 
 Expected result:
 
 ```text
-[SEMANTIC S027] Function `boot` is called before declaration.
+[SEMANTIC S036]
+Step `(2)` requires stand values from earlier steps.
 ```
 
-Result:
+Observed result:
 
 ```text
 Passed
 ```
 
+Confirmed details:
+
+- required stand was identified as `temporary`
+- the diagnostic explained that direct step calls create new invocations
+- the diagnostic explained that previous stand values are not preserved
+- the compiler recommended calling the complete function
+
 ---
 
-## Ordered Start Pass Test
+## S037 — stand Outside x64
 
-Test purpose:
-
-```text
-Verify that ordered function declaration and call compiles.
-```
-
-Source pattern:
+Source:
 
 ```sl
-lib(std)
-x64
-type(console)
+custing(silk)
+x16
 
-create boot()
-    (1) vga_print("ok")
+create invalid_boot()
+    (1) stand: temporary = 10
 
-start boot()
-halt()
+start invalid_boot()
 ```
 
 Expected result:
 
 ```text
-Compilation succeeds.
+[SEMANTIC S037]
+stand currently supports x64 mode only.
 ```
 
-Result:
+Observed result:
 
 ```text
 Passed
 ```
 
+The diagnostic correctly identified that:
+
+- the current implementation uses the x64 function stack
+- x16 stand support is deferred
+- x32 remains planned for later work
+
 ---
 
-## Top-Level Local After Function Test
+## Unknown Character Rejection
 
-Test purpose:
-
-```text
-Verify that top-level local declarations may appear after function declarations.
-```
-
-Source pattern:
+Source:
 
 ```sl
-lib(std)
 x64
-type(console)
 
-create boot()
-    (1) vga_print("boot")
-
-local status = 1
-
-start boot()
-halt()
+local value = 10 @ 20
 ```
 
 Expected result:
 
 ```text
-Compilation succeeds.
+[PARSE ERROR]
+Unknown character `@`
 ```
 
-Result:
+Observed result:
 
 ```text
 Passed
 ```
 
+Importance:
+
+```text
+Unknown lexer tokens are no longer silently ignored.
+```
+
+The parser stops before semantic analysis and NASM.
+
 ---
 
-## x64 Register Preservation Notes
+# Existing Semantic Regression Coverage
 
-Important register behavior preserved by current tests:
+The following older diagnostics remain part of the compiler behavior:
 
-| Area | Register Rule |
+| Diagnostic | Purpose |
 | :--- | :--- |
-| string printing | preserves `rsi` |
-| `read_port()` | preserves `rdx` |
-| `write_port()` | preserves `rdx`, `r10`, `r11` |
-| `vga_clear()` | preserves helper registers used internally |
-| function args | follow current experimental x64 argument-register behavior |
+| `S001` | Reserved name rejection |
+| `S002` | Duplicate function rejection |
+| `S003` | Duplicate storage rejection |
+| `S004` | Duplicate parameter rejection |
+| `S005` | Parameter/storage conflict |
+| `S007` | Direct parameter mutation rejection |
+| `S008` | Unknown mutation target |
+| `S009` | Unknown function |
+| `S010` | Recursive call rejection |
+| `S011` | Function-local local rejection |
+| `S012` | Missing function step |
+| `S013` | Invalid redo target |
+| `S014` | Function/storage name conflict |
+| `S015` | Unknown storage symbol |
+| `S016` | Mixed step selector and argument call |
+| `S017` | Wrong argument count |
+| `S018` | Duplicate numbered step |
+| `S019` | Unknown FREERAM target |
+| `S020` | Parameterized direct-step rejection |
+| `S021` | Unknown library |
+| `S022` | std used without lib(std) |
+| `S023` | Unknown std command |
+| `S024` | Wrong std argument count |
+| `S027` | Function called before declaration |
+| `S028` | get used on function without result |
+| `S029` | result outside function |
+| `S030` | Invalid result position |
+| `S031` | Non-ascending function steps |
+| `S032` | Invalid stand position |
+| `S033` | Duplicate stand |
+| `S035` | Stand name conflict |
 
-Current x64 argument register mapping:
+Not every diagnostic received a separate public source example during the final `v0.6-alpha` session.
 
-| Arg | Register |
+The report distinguishes directly observed tests from implemented semantic paths.
+
+---
+
+# Register and Stack Validation
+
+## Current x64 Argument Mapping
+
+| Argument | Register |
 | :--- | :--- |
 | 1 | `rdi` |
 | 2 | `rsi` |
@@ -797,117 +761,169 @@ Current x64 argument register mapping:
 | 5 | `r8` |
 | 6 | `r9` |
 
----
+## Current Helper Preservation
 
-## x16 Bootloader Regression Status
+| Helper | Preservation |
+| :--- | :--- |
+| String printing | Preserves `rsi` |
+| `read_port()` | Preserves `rdx` |
+| `write_port()` | Preserves `rdx`, `r10`, `r11` |
+| `vga_clear()` | Preserves helper registers used internally |
 
-The x16 bootloader path remains separate from `lib(std)`.
+## stand Frame
 
-Current status:
+Validated behavior:
 
-```text
-Experimental / working.
-```
-
-Important limitation:
-
-```text
-lib(std) is not supported in x16 in v0.5-alpha.
-```
-
-Example x16 pattern:
-
-```sl
-custing(silk)
-x16
-
-local msg = "Hello from Bootloader!"
-
-create boot()
-    (1) print(msg)
-    (2) low-code:
-            cli
-            halt
-
-start boot()
-```
+- `rbp` is saved
+- `rsp` becomes the frame base
+- stand storage is allocated before function statements
+- frame size is aligned to 16 bytes
+- stand names map to stack operands
+- frame storage is released before return
+- compiler symbol mappings are restored after function generation
 
 Result:
 
 ```text
-Experimental path preserved.
+Passed current generated-assembly inspection
 ```
 
 ---
 
-## Current Known Limitations
+# Removed Experimental Behavior
 
-| Area | Limitation |
-| :--- | :--- |
-| `lib(std)` | x64-only |
-| Type system | Incomplete |
-| Memory safety | Not implemented |
-| Return values | No stable explicit `return` keyword |
-| `get result()` | Experimental |
-| Strings | No full string system |
-| Arrays | No bounds checking |
-| Structs | Experimental |
-| Exceptions | `try/catch` is syntax-level / experimental |
-| Optimizer | Basic only |
-| Package ecosystem | Planned for `v0.6-alpha` |
-| Library Hub | Planned for `v0.6-alpha` |
-| Networking | Not implemented |
-| Driver stack | Not implemented |
-| Self-hosting | Long-term goal |
+The following experimental file-linking syntax is not part of `v0.6-alpha`:
+
+```sl
+give("kernel.sl")
+receive("bootloader.sl")
+x16 goto x32
+```
+
+It was removed during compiler rollback and cleanup.
+
+The current `give` keyword is only:
+
+```sl
+stand: value = expression give to (step)
+```
+
+No inter-file linker protocol was validated as part of this release.
 
 ---
 
-## Test Conclusion
+# Known Test Boundary
 
-`v0.5-alpha` passed the current validation target.
+The x64 backend generates valid NASM and flat binaries for the current tests.
+
+However:
+
+```text
+The x64 kernel binary was not directly executed in QEMU
+through a complete Sentinel-generated long-mode boot chain.
+```
+
+Reason:
+
+- the x16 boot sector does not load the x64 kernel
+- protected-mode transition is not implemented
+- page tables are not generated
+- long mode is not enabled
+- control is not transferred to the x64 entry point
+
+Therefore the current result must be described accurately:
+
+```text
+x64 compiler and NASM validation: Passed
+x64 complete boot execution: Not available
+x16 boot execution: Passed
+```
+
+---
+
+# Current Limitations
+
+| Area | Limitation |
+| :--- | :--- |
+| x64 QEMU execution | Complete boot chain missing |
+| x32 | Backend incomplete |
+| x16 std | Four-command subset |
+| stand | x64-only |
+| Type system | Incomplete |
+| Memory safety | Incomplete |
+| Recursion | Unsupported |
+| Arrays | No bounds checking |
+| Structs | Experimental |
+| Exceptions | Experimental |
+| Optimizer | Basic |
+| ABI | Experimental |
+| Pixel graphics | Not implemented |
+| Filesystems | Not implemented |
+| Networking | Not implemented |
+| Driver framework | Not implemented |
+| Library ecosystem | Planned |
+| Self-hosting | Not implemented |
+
+---
+
+# Test Result Table
+
+| Test | Target | Result |
+| :--- | :--- | :--- |
+| Kernel Beast | x64 | Passed |
+| Stand Beast | x64 | Passed compilation |
+| Basic stand/get | x64 | Passed |
+| x64 core regression | x64 | Passed |
+| x64 NASM assembly | x64 | Passed |
+| x64 flat binary | x64 | Passed |
+| x16 boot compile | x16 | Passed |
+| x16 flat binary | x16 | Passed |
+| x16 512-byte size | x16 | Passed |
+| x16 boot signature | x16 | Passed |
+| x16 QEMU execution | x16 | Passed |
+| S026 unsupported std | x16 | Passed |
+| S034 missing stand target | x64 | Passed |
+| S036 dependent-step call | x64 | Passed |
+| S037 x16 stand | x16 | Passed |
+| Unknown `@` character | Parser | Passed |
+| Wrapper elimination | x64 | Passed |
+
+---
+
+# Final Conclusion
+
+`v0.6-alpha` passed its current validation target.
 
 Main conclusion:
 
 ```text
-Sentinel can compile the current x64 Kernel Beast stress test and reject known invalid function-order patterns before NASM.
+Sentinel now supports explicit temporary x64 function storage,
+forward step-to-step value transfer, final function results,
+and result retrieval without breaking the existing x64 core
+or the working x16 boot-sector path.
 ```
 
-This makes `v0.5-alpha` a real compiler hardening milestone.
+Confirmed release capabilities:
 
-The compiler is still experimental, but the current alpha core is strong enough for OSDev experiments, kernel-style prototypes, and transparent `.sl -> NASM -> flat binary` testing.
+- persistent storage through `local`
+- temporary function storage through `stand`
+- explicit transfer through `give`
+- mutation through `redo`
+- final values through `result`
+- retrieval through `get`
+- x64 stack-frame allocation
+- target-specific std validation
+- strict unknown-character rejection
+- readable NASM output
+- flat binary generation
+- working x16 QEMU boot
 
----
-
-## Next Testing Targets
-
-Planned future testing direction:
-
-| Version | Testing Focus |
-| :--- | :--- |
-| `v0.6-alpha` | external library format, library loading, Library Hub metadata |
-| `v0.7-alpha` | optimizer correctness and ASM size reduction |
-| `v0.7.1-alpha` | advanced TOP optimization pass |
-| `v0.8-alpha` | tooling and playground validation |
-| `v0.9-beta` | stability, regression suite, documentation hardening |
-
----
-
-## Final Status
+Final status:
 
 ```text
-Sentinel Lang v0.5-alpha
-Kernel Toolkit Preview
+Sentinel Lang v0.6-alpha
+Core Language Completion
 Status: Passed current alpha validation
 ```
 
-Sentinel remains experimental alpha software.
-
-But `v0.5-alpha` confirms that the project now has:
-
-- a working x64 OSDev helper layer
-- stricter semantic validation
-- fixed shift code generation
-- a passed kernel-style stress test
-- readable NASM output
-- flat binary generation
-- a clearer path toward a future library ecosystem
+The next major test boundary is a complete x64 boot chain capable of executing the generated x64 kernel directly in QEMU.
