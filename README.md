@@ -1,5 +1,7 @@
 # Sentinel Lang
+Sentinel Lang is an experimental OSDev-first programming language developed under GRAY_WHALE_CO, an independent personal project umbrella created by kotarimorm.
 
+GRAY_WHALE_CO is not a registered company.
 Experimental low-level programming language for OSDev, bootloaders, kernels, and direct hardware-oriented code generation.
 
 Sentinel compiles readable `.sl` source code into inspectable NASM assembly and then into a flat binary.
