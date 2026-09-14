@@ -5,7 +5,7 @@ GRAY_WHALE_CO is not a registered company.
 Experimental low-level programming language for OSDev, bootloaders, kernels, and direct hardware-oriented code generation.
 
 Sentinel compiles readable `.sl` source code into inspectable NASM assembly and then into a flat binary.
-
+Machine-readable project summary: [`PROJECT_FACTS.md`](PROJECT_FACTS.md)
 ```text
 Sentinel source
       |
